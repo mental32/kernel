@@ -36,8 +36,14 @@ Lets try writing a small kernel in Zig and Haskell.
 
 ## [Progress](#Index)
 
+ - [ ] Build system
+     - [ ] Bootstrapping
+ - [ ] IO/Memory memes
+    - [ ] Compilmentary VGA Driver
+    - [ ] Compilmentary Keyboard Driver (UK-GB layout)
  - [ ] Haskell RTS
- - [ ] The Kernel
+     - [ ] Multitasking
+ - [ ] The Kernel (All of the above.)
 
 ## [Related projects](#Index)
 
