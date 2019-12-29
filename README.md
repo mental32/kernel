@@ -16,19 +16,19 @@
 
 Lets try writing a small kernel in Zig and Haskell.
 
-### [Tech stack](#Index)
+### [Tech stack](#Abstract)
 
  - Zig
  - GHC Haskell
 
-### Goals
+### [Goals](#Abstract)
 
  - *Should support AMD86 and work in 64bit mode w/ full paging*
  - *Should perform basic co-operative multitasking*
  - *Should be written in Haskell as much as possible.*
    - Assembly or Zig should only be used where required for functionality or performance reasons.
 
-#### Optional
+#### [Optional](#Goals)
 
  - *Could, support userland and syscalls*
  - *Could, provide a "complete" libc where possible.*"
@@ -38,3 +38,8 @@ Lets try writing a small kernel in Zig and Haskell.
 
  - [ ] Haskell RTS
  - [ ] The Kernel
+
+## [Related projects](#Index)
+
+ - [Hos](https://github.com/tathougies/hos)
+ - [Pluto](https://github.com/SamTebbs33/pluto)
