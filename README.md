@@ -1,5 +1,5 @@
 # fart-joke
-## A Kernel written in GHC Haskell and Zig
+## A Kernel written in C, GHC Haskell and Rust
 
 ## Index
 
@@ -14,11 +14,11 @@
 > popular I'll change it, but otherwise I reserve the bragging rights of
 > saying I made a fart joke that ran my code.
 
-Lets try writing a small kernel in Zig and Haskell.
+Lets try writing a small kernel in C, Rust and Haskell.
 
 ### [Tech stack](#Abstract)
 
- - Zig
+ - Rust
  - GHC Haskell
 
 ### [Goals](#Abstract)
@@ -26,7 +26,7 @@ Lets try writing a small kernel in Zig and Haskell.
  - *Should support AMD86 and work in 64bit mode w/ full paging*
  - *Should perform basic co-operative multitasking*
  - *Should be written in Haskell as much as possible.*
-   - Assembly or Zig should only be used where required for functionality or performance reasons.
+   - C, Assembly or Rust should only be used where required for functionality or performance reasons.
 
 #### [Optional](#Goals)
 
