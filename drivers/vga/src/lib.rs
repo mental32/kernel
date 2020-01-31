@@ -1,5 +1,6 @@
 #![no_std]
 #![forbid(missing_docs)]
+#![allow(unused_macros)]
 
 //! VGA terminal driver.
 //!
@@ -19,15 +20,25 @@
 //! ```
 
 mod attribute;
+mod buffer;
 mod character;
 mod writer;
 mod result;
 
-pub use {attribute::*, character::*, writer::*, result::*};
+pub use {attribute::*, buffer::*, character::*, cursor::*, result::*, writer::*};
 
-use core::panic::PanicInfo;
+macro_rules! vprintln {
+    ($writer:expr, $($arg:tt)*) => {
+        #[cfg(target_arch = "x86_64")]
+        use x86_64::instructions::interrupts;
+
+        interupts::without_interrupts(|| {
+            $writer.write_fmt(format_args!($($arg)*))
+        });
+    }
+}
 
 #[panic_handler]
-fn panic(_info: &PanicInfo) -> ! {
-    loop {}  // XXX: We should do something better here.
+fn panic(_info: &core::panic::PanicInfo) -> ! {
+    loop {} // XXX: We should do something better here.
 }

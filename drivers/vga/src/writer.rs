@@ -1,21 +1,9 @@
 use {
-    crate::{Attribute, Char, Color, FailureReason},
+    crate::{Attribute, Char, Color, DefaultBuffer, VGABuffer, VGACursor},
     core::default::Default,
-    volatile::Volatile,
 };
 
-/// Buffer width constant that is used as the default width.
-pub const BUFFER_WIDTH: usize = 80;
-
-/// Buffer height constant that is used as the default height.
-pub const BUFFER_HEIGHT: usize = 25;
-
-/// VGA MMIO address constant for most AMD64 systems.
-pub const MMIO_VGA_ADDR: *mut Buffer = 0xb8000 as *mut Buffer;
-
-/// Type alias helper that treats VGA MMIO as a two dimensional array.
-pub type Buffer = [[Volatile<Char>; BUFFER_WIDTH]; BUFFER_HEIGHT];
-
+#[derive(Debug, PartialEq)]
 enum VGAStatus {
     Normal,
     Escape,
@@ -23,33 +11,31 @@ enum VGAStatus {
 }
 
 /// Struct responsible for writing data into the VGA address space.
-pub struct VGAWriter {
-    status: VGAStatus,
-    cursor: (usize, usize),
+pub struct VGAWriter<'a> {
+    /// The VGA cursor that gets used.
+    pub cursor: VGACursor,
+
     attr: Attribute,
-    width: usize,
-    height: usize,
-    buffer: &'static mut Buffer,
+    buffer: &'a mut dyn VGABuffer,
+    csi_param: Option<usize>,
+    status: VGAStatus,
 }
 
-
-impl Default for VGAWriter {
+impl Default for VGAWriter<'static> {
     fn default() -> Self {
-        let buffer = unsafe { MMIO_VGA_ADDR.as_mut() }.unwrap();
-        Self::new(BUFFER_WIDTH, BUFFER_HEIGHT, buffer)
+        Self::new(DefaultBuffer::refrence())
     }
 }
 
-impl VGAWriter {
+impl VGAWriter<'static> {
     /// Create a new writer that operates over a fixed sized
-    /// arena of video memory. 
-    pub fn new(width: usize, height: usize, buffer: &'static mut Buffer) -> Self {
+    /// arena of video memory.
+    pub fn new(buffer: &'static mut (dyn VGABuffer + 'static)) -> Self {
         Self {
             attr: Attribute::default(),
+            cursor: VGACursor::new(),
             status: VGAStatus::Normal,
-            cursor: (0, 0),
-            width,
-            height,
+            csi_param: None,
             buffer,
         }
     }
@@ -61,24 +47,22 @@ impl VGAWriter {
     /// ```
     /// writer.set_byte(0, 0, 'A');  // Sets the top left character to "A"
     /// ```
-    pub fn set_byte(&mut self, x: usize, y: usize, byte: u8) -> crate::Result<()> {
-        if y >= self.buffer.len() || x >= self.buffer[y].len() {
-            return Err(FailureReason::OutOfBounds((self.width, self.height)));
-        }
-
-        self.buffer[y][x].write(Char {
-            data: byte,
-            attr: self.attr,
-        });
-
-        Ok(())
+    fn set_byte(&mut self, x: usize, y: usize, byte: u8) {
+        self.buffer.write(
+            x,
+            y,
+            Char {
+                data: byte,
+                attr: self.attr,
+            },
+        );
     }
 
     fn scroll(&mut self) {
-        for row in 1..BUFFER_HEIGHT {
-            for col in 0..BUFFER_WIDTH {
-                let char_ = self.buffer[row][col].read();
-                self.buffer[row - 1][col].write(char_);
+        for row in 1..self.buffer.height() {
+            for col in 0..self.buffer.width() {
+                let char_ = self.buffer.read(row, col);
+                self.buffer.write(col, row - 1, char_);
             }
         }
     }
@@ -89,8 +73,8 @@ impl VGAWriter {
             attr: self.attr,
         };
 
-        for col in 0..BUFFER_WIDTH {
-            self.buffer[row][col].write(blank);
+        for col in 0..self.buffer.width() {
+            self.buffer.write(col, row, blank);
         }
     }
 }
