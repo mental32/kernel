@@ -1,5 +1,5 @@
 [package]
-name = "echfs"
+name = "vga"
 version = "0.1.0"
 authors = ["mental <m3nta1@yahoo.com>"]
 edition = "2018"
@@ -8,6 +8,10 @@ edition = "2018"
 crate-type = ["staticlib"]
 
 [dependencies]
+volatile = "0.2.6"
+
+[target.'cfg(target_arch = "x86_64")'.dependencies]
+x86_64 = "0.4.1"
 
 [profile.dev]
 panic = "abort"
