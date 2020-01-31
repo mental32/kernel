@@ -70,6 +70,16 @@ impl Attribute {
         Attribute((background as u8) << 4 | (foreground as u8))
     }
 
+    /// Set the foreground color.
+    pub fn set_foreground(&mut self, foreground: Color) {
+        self.0 |= foreground as u8;
+    }
+
+    /// Set the background color.
+    pub fn set_background(&mut self, background: Color) {
+        self.0 = (background as u8) << 4 | ((self.0 & 0x0F) as u8)
+    }
+
     /// Helper to create a white foreground on a black background.
     pub fn default() -> Self {
         Attribute((Color::Black as u8) << 4 | (Color::White as u8))
