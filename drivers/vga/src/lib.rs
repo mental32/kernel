@@ -22,8 +22,9 @@
 mod attribute;
 mod buffer;
 mod character;
-mod writer;
+mod cursor;
 mod result;
+mod writer;
 
 pub use {attribute::*, buffer::*, character::*, cursor::*, result::*, writer::*};
 
