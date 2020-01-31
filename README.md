@@ -18,7 +18,13 @@ Lets try writing a small kernel in C, Rust and Haskell.
 
 ### [Tech stack](#Abstract)
 
+ - Make
  - Rust
+   - cargo-xargo
+ - C
+   - Clang
+ - x86 Assembly
+   - NASM
  - GHC Haskell
 
 ### [Goals](#Abstract)
@@ -49,3 +55,4 @@ Lets try writing a small kernel in C, Rust and Haskell.
 
  - [Hos](https://github.com/tathougies/hos)
  - [Pluto](https://github.com/SamTebbs33/pluto)
+ - [HaLVM](https://github.com/GaloisInc/HaLVM)
