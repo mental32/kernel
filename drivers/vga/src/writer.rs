@@ -24,7 +24,18 @@ pub struct VGAWriter<'a> {
     status: VGAStatus,
 }
 
-impl Default for VGAWriter<'static> {
+impl<'a> Write for VGAWriter<'a> {
+    fn write_str(&mut self, st: &str) -> fmt::Result {
+        for byte in st.bytes() {
+            self.print_char(byte as char);
+        }
+
+        Ok(())
+    }
+}
+
+
+impl<'a> Default for VGAWriter<'a> {
     fn default() -> Self {
         Self::new(DefaultBuffer::refrence())
     }
