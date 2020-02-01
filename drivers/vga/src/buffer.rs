@@ -9,7 +9,7 @@ pub trait VGABuffer {
     fn width(&self) -> usize;
 
     /// Write a character at position x, y.
-    fn write(&mut self, x: usize, y: usize, ch: Char);
+    fn write(&mut self, x: usize, y: usize, ch: Char) -> crate::Result<()>;
 
     /// Read a character at position x, y.
     fn read(&self, x: usize, y: usize) -> Char;
@@ -46,8 +46,9 @@ impl VGABuffer for DefaultBuffer {
         BUFFER_WIDTH
     }
 
-    fn write(&mut self, x: usize, y: usize, ch: Char) {
+    fn write(&mut self, x: usize, y: usize, ch: Char) -> crate::Result<()> {
         self.data[y][x].write(ch);
+        Ok(())
     }
 
     fn read(&self, x: usize, y: usize) -> Char {

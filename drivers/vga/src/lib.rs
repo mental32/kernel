@@ -39,7 +39,7 @@ macro_rules! vprintln {
         };
 
         interrupts::without_interrupts(|| {
-            $writer.write_fmt(format_args!($($arg)*))
+            $writer.write_fmt(format_args!($($arg)*)).unwrap()
         });
     }
 }
