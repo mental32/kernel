@@ -9,9 +9,11 @@ crate-type = ["staticlib"]
 
 [dependencies]
 volatile = "0.2.6"
+spin = "0.5.2"
 
 [target.'cfg(target_arch = "x86_64")'.dependencies]
 x86_64 = "0.4.1"
+cpuio = "0.2.0"
 
 [profile.dev]
 panic = "abort"
