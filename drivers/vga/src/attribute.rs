@@ -51,6 +51,27 @@ pub enum Color {
     White = 15,
 }
 
+const COLORS: &[Color; 8] = &[
+    Color::Black,
+    Color::Red,
+    Color::Green,
+    Color::Yellow,
+    Color::Blue,
+    Color::Magenta,
+    Color::Cyan,
+    Color::White,
+];
+
+impl Color {
+    /// Get a color from an index.
+    pub fn from_usize(other: usize) -> Option<Self> {
+        if other >= COLORS.len() {
+            None
+        } else {
+            Some(COLORS[other])
+        }
+    }
+}
 
 /// A character attribute describes the foreground and background colors to use
 /// When rendering the character.
