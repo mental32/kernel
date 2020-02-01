@@ -68,10 +68,10 @@ impl VGACursor {
         let mut b_port_handle = B_PORT.lock();
 
         a_port_handle.write(0x0F);
-        b_port_handle.write((pos & 0xFF));
+        b_port_handle.write(pos & 0xFF);
 
         a_port_handle.write(0x0E);
-        b_port_handle.write(((pos >> 8) & 0xFF));
+        b_port_handle.write((pos >> 8) & 0xFF);
 
         Ok(())
     }
