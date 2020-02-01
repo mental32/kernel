@@ -26,14 +26,19 @@ mod cursor;
 mod result;
 mod writer;
 
-pub use {attribute::*, buffer::*, character::*, cursor::*, result::*, writer::*};
+pub use {core::fmt::Write, attribute::*, buffer::*, character::*, cursor::*, result::*, writer::*};
 
+
+/// Like println!
+#[macro_export]
 macro_rules! vprintln {
     ($writer:expr, $($arg:tt)*) => {
-        #[cfg(target_arch = "x86_64")]
-        use x86_64::instructions::interrupts;
+        use {
+            x86_64::instructions::interrupts,
+            core::fmt::Write
+        };
 
-        interupts::without_interrupts(|| {
+        interrupts::without_interrupts(|| {
             $writer.write_fmt(format_args!($($arg)*))
         });
     }
