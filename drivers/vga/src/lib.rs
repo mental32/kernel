@@ -43,8 +43,3 @@ macro_rules! vprintln {
         });
     }
 }
-
-#[panic_handler]
-fn panic(_info: &core::panic::PanicInfo) -> ! {
-    loop {} // XXX: We should do something better here.
-}
