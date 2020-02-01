@@ -1,4 +1,5 @@
 /// An enum of failure reasons.
+#[derive(Debug)]
 pub enum FailureReason {
     /// An access was attempted out of the bounds of the writers buffer.
     OutOfBounds((usize, usize)),
