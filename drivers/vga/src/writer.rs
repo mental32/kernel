@@ -33,7 +33,7 @@ impl VGAWriter<'static> {
     pub fn new(buffer: &'static mut (dyn VGABuffer + 'static)) -> Self {
         Self {
             attr: Attribute::default(),
-            cursor: VGACursor::new(),
+            cursor: VGACursor::new(buffer.width(), buffer.height()),
             status: VGAStatus::Normal,
             csi_param: None,
             buffer,

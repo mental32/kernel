@@ -1,4 +1,4 @@
-use {spin::Mutex, cpuio::Port};
+use {super::FailureReason, spin::Mutex, cpuio::Port};
 
 static A_PORT: Mutex<Port<u8>> = Mutex::new(unsafe { Port::new(0x3D4) });
 static B_PORT: Mutex<Port<u8>> = Mutex::new(unsafe { Port::new(0x3D5) });
@@ -12,16 +12,20 @@ pub struct VGACursor {
     /// The y co-ordinate of the cursor.
     pub y: usize,
 
+    width: usize,
+    height: usize,
     enabled: bool,
 }
 
 
 impl VGACursor {
     /// A new cursor.
-    pub fn new() -> Self {
+    pub fn new(width: usize, height: usize) -> Self {
         Self {
             x: 0,
             y: 0,
+            width,
+            height,
             enabled: false,
         }
     }
@@ -53,8 +57,12 @@ impl VGACursor {
     }
 
     /// Seek the cursor to pos x, y.
-    pub fn seek(&mut self, width: usize, x: usize, y: usize) -> crate::Result<()> {
-        let pos = (y * width + x) as u8;
+    pub fn seek(&mut self, x: usize, y: usize) -> crate::Result<()> {
+        if !(0..=(self.width)).contains(&x) || !(0..=(self.height)).contains(&y) {
+            return Err(FailureReason::OutOfBounds((self.width, self.height)));
+        }
+
+        let pos = (y * self.width + x) as u8;
 
         let mut a_port_handle = A_PORT.lock();
         let mut b_port_handle = B_PORT.lock();
