@@ -1,6 +1,9 @@
 use {
     crate::{Attribute, Char, Color, DefaultBuffer, VGABuffer, VGACursor},
-    core::default::Default,
+    core::{
+        default::Default,
+        fmt::{self, Write},
+    },
 };
 
 #[derive(Debug, PartialEq)]
@@ -27,10 +30,11 @@ impl Default for VGAWriter<'static> {
     }
 }
 
-impl VGAWriter<'static> {
+
+impl<'a> VGAWriter<'a> {
     /// Create a new writer that operates over a fixed sized
     /// arena of video memory.
-    pub fn new(buffer: &'static mut (dyn VGABuffer + 'static)) -> Self {
+    pub fn new(buffer: &'a mut (dyn VGABuffer + 'a)) -> Self {
         Self {
             attr: Attribute::default(),
             cursor: VGACursor::new(buffer.width(), buffer.height()),
