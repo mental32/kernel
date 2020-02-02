@@ -50,6 +50,16 @@ impl<'a> VGAWriter<'a> {
         }
     }
 
+    /// Set the writers attribute.
+    pub fn set_attr(&mut self, attr: Attribute) {
+        self.attr = attr;
+    }
+
+    /// Get the size of the VGABuffer as a (width, height) tuple.
+    pub fn size(&self) -> (usize, usize) {
+        (self.buffer.width(), self.buffer.height())
+    }
+
     /// Print a string.
     pub fn print_str(&mut self, st: &str) -> crate::Result<()> {
         for byte in st.bytes() {
