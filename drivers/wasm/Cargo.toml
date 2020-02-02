@@ -4,9 +4,6 @@ version = "0.1.0"
 authors = ["mental <m3nta1@yahoo.com>"]
 edition = "2018"
 
-[lib]
-crate-type = ["staticlib"]
-
 [dependencies]
 bare-wasm = { git = "https://github.com/mental32/bare-wasm" }
 
