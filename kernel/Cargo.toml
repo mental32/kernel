@@ -10,6 +10,9 @@ crate-type = ["staticlib"]
 [dependencies]
 vga = { path = "../drivers/vga" }
 x86_64 = "0.4.1"
+spin = "0.5.2"
+multiboot2 = "0.8.1"
+lazy_static = { version = "1.4.0", features = ["spin_no_std"] }
 
 [profile.dev]
 panic = "abort"
