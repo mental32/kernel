@@ -9,22 +9,37 @@
 mod driver;
 mod gdt;
 mod isr;
+mod pic;
 mod result;
 mod state;
 
 use {
     core::fmt::Write,
+    lazy_static::lazy_static,
     multiboot2::load,
+    spin::Mutex,
     state::KernelStateObject,
-    vga::{vprintln, VGAWriter},
-    x86_64::instructions::interrupts,
+    vga::{vprint, DefaultBuffer, DefaultWriter},
+    x86_64::{
+        instructions::{hlt, interrupts},
+        structures::paging::PageTable,
+    },
 };
+
+lazy_static! {
+    pub(crate) static ref KERNEL_STATE_OBJECT: Mutex<Option<KernelStateObject>> =
+        { Mutex::new(None) };
+}
+
+extern "C" {
+    static PML4: *mut PageTable;
+}
 
 /// Kernel main start point.
 #[no_mangle]
 pub unsafe extern "C" fn kmain(multiboot_addr: usize) -> ! {
     let boot_info = load(multiboot_addr);
-    let mut state = KernelStateObject::new(boot_info);
+    let mut state = KernelStateObject::new();
 
     // Setting everything up for regular work.
     // The call to ``KernelStateObject::prepare`` will:
@@ -33,19 +48,35 @@ pub unsafe extern "C" fn kmain(multiboot_addr: usize) -> ! {
     //  - Initialize the global allocator and memory manager
     //  - Resize, reallocate or modify current pages and setup a heap.
 
-    state.prepare().unwrap();
+    state.prepare(&boot_info).unwrap();
 
-    vprintln!("{:?}", state.boot_info);
+    {
+        let mut handle = KERNEL_STATE_OBJECT.lock();
+        *handle = Some(state);
+    }
 
-    loop {}
+    interrupts::enable();
+
+    for page in (*PML4).iter().filter(|page| !page.flags().is_empty()) {
+        vprint!("{:?}\n", page);
+    }
+
+    loop {
+        hlt()
+    }
 }
 
 #[panic_handler]
 fn panic(info: &core::panic::PanicInfo) -> ! {
-    let mut writer = VGAWriter::default();
+    interrupts::disable();
+
+    let mut writer = DefaultWriter::new(DefaultBuffer::refrence());
     writer.print_fill_char(' ').unwrap();
-    vprintln!(writer, "{}", info);
-    loop {}
+    vprint!(writer, "{}", info);
+
+    loop {
+        hlt()
+    }
 }
 
 /// OOM handler.

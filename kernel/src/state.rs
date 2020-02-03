@@ -1,8 +1,10 @@
 use {
-    crate::{gdt::ExposedGlobalDescriptorTable, isr::InterruptHandlers},
+    crate::{gdt::ExposedGlobalDescriptorTable, isr::InterruptHandlers, pic::PICS},
     bit_field::BitField,
     core::mem::size_of,
     multiboot2::BootInformation,
+    pic8259_simple::ChainedPics,
+    spin::Mutex,
     x86_64::{
         instructions::{
             segmentation::set_cs,
@@ -24,20 +26,19 @@ struct Selectors {
 
 /// A struct that journals the kernels state.
 pub(crate) struct KernelStateObject {
-    pub boot_info: BootInformation,
+    pic: Option<&'static Mutex<ChainedPics>>,
+    gdt: ExposedGlobalDescriptorTable,
     idt: InterruptDescriptorTable,
     tss: TaskStateSegment,
-    gdt: ExposedGlobalDescriptorTable,
     selectors: Selectors,
 }
 
-impl InterruptHandlers for KernelStateObject {}
-
 impl KernelStateObject {
-    pub fn new(boot_info: BootInformation) -> Self {
+    pub fn new() -> Self {
         let idt = InterruptDescriptorTable::new();
         let tss = TaskStateSegment::new();
         let gdt = ExposedGlobalDescriptorTable::new();
+        let pic = None;
 
         let selectors = Selectors {
             code_selector: None,
@@ -45,15 +46,15 @@ impl KernelStateObject {
         };
 
         Self {
-            boot_info,
             selectors,
             idt,
             tss,
             gdt,
+            pic,
         }
     }
 
-    pub unsafe fn prepare(&mut self) -> crate::result::Result<()> {
+    pub unsafe fn prepare(&mut self, _boot_info: &BootInformation) -> crate::result::Result<()> {
         // TSS
         self.tss.interrupt_stack_table[0] = {
             const STACK_SIZE: usize = 4096;
@@ -64,7 +65,7 @@ impl KernelStateObject {
             stack_end
         };
 
-        // // GDT
+        // GDT
         let tss_descriptor = {
             let ptr = (&self.tss) as *const _ as u64;
 
@@ -98,7 +99,15 @@ impl KernelStateObject {
 
         // IDT
         Self::set_isr_handlers(&mut self.idt);
+        ChainedPics::set_isr_handlers(&mut self.idt);
         self.load_idt();
+
+        self.pic = Some(&(*PICS));
+
+        {
+            let mut handle = self.pic.unwrap().lock();
+            handle.initialize();
+        }
 
         // ALLOCATOR
         // PAGING

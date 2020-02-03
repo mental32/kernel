@@ -1,9 +1,6 @@
 use {
-    crate::{Attribute, Char, Color, DefaultBuffer, VGABuffer, VGACursor},
-    core::{
-        default::Default,
-        fmt::{self, Write},
-    },
+    crate::{Attribute, Char, Color, VGABuffer, VGACursor},
+    core::fmt::{self, Write},
 };
 
 #[derive(Debug, PartialEq)]

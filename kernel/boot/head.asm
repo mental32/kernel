@@ -1,6 +1,7 @@
 extern kmain
 
 global _start
+global PML4
 
 section .rodata
 
@@ -22,7 +23,7 @@ PDT:  resb 4096
 PT:   resb 4096
 
 stack_bottom:
-    resb (4096 * 4) * 2 ; 32KiB Stack
+    resb (4096 * 4) * 4 ; 32KiB Stack
 stack_top:
 
 section .text

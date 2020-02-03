@@ -51,7 +51,6 @@ impl VGABuffer for DefaultBuffer {
 
     fn write(&mut self, x: usize, y: usize, ch: Char) -> crate::Result<()> {
         if y >= self.height() || x >= self.width() {
-            panic!("{:?} {:?} {:?}", x, y, ch);
             return Err(FailureReason::OutOfBounds((self.width(), self.height())));
         }
 
@@ -61,7 +60,6 @@ impl VGABuffer for DefaultBuffer {
 
     fn read(&self, x: usize, y: usize) -> crate::Result<Char> {
         if y >= self.height() || x >= self.width() {
-            panic!("reading out of bounds {:?} {:?}", x, y);
             return Err(FailureReason::OutOfBounds((self.width(), self.height())));
         }
 
