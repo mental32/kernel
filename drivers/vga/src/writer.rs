@@ -60,6 +60,22 @@ impl<'a> VGAWriter<'a> {
         (self.buffer.width(), self.buffer.height())
     }
 
+    /// Fill the buffer with a single character.
+    pub fn print_fill_char(&mut self, ch: char) -> crate::Result<()> {
+        self.cursor.x = 0;
+        self.cursor.y = 0;
+
+        let (width, height) = self.size();
+
+        for x in 0..width {
+            for y in 0..height {
+                self.set_byte(x, y, ch as u8)?;
+            }
+        }
+
+        Ok(())
+    }
+
     /// Print a string.
     pub fn print_str(&mut self, st: &str) -> crate::Result<()> {
         for byte in st.bytes() {
@@ -262,7 +278,7 @@ impl<'a> VGAWriter<'a> {
                 }
             }
 
-            _ => ()
+            _ => (),
         }
 
         Ok(())

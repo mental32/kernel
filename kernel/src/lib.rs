@@ -32,6 +32,7 @@ pub unsafe extern "C" fn kmain(multiboot_addr: usize) {
 #[panic_handler]
 fn panic(info: &core::panic::PanicInfo) -> ! {
     let mut writer = VGAWriter::default();
+    writer.print_fill_char(' ').unwrap();
     vprintln!(writer, "{}", info);
     loop {}
 }
