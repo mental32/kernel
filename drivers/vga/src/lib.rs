@@ -26,20 +26,31 @@ mod cursor;
 mod result;
 mod writer;
 
-pub use {core::fmt::Write, attribute::*, buffer::*, character::*, cursor::*, result::*, writer::*};
-
+pub use {
+    attribute::*, buffer::*, character::*, core::fmt::Write, cursor::*, result::*, writer::*,
+};
 
 /// Like println!
 #[macro_export]
 macro_rules! vprintln {
-    ($writer:expr, $($arg:tt)*) => {
-        use {
-            x86_64::instructions::interrupts,
-            core::fmt::Write
-        };
+    ($writer:ident, $($arg:tt)*) => {
+        let enabled = x86_64::instructions::interrupts::are_enabled();
 
-        interrupts::without_interrupts(|| {
-            $writer.write_fmt(format_args!($($arg)*)).unwrap()
-        });
+        if enabled {
+            x86_64::instructions::interrupts::disable();
+        }
+
+        let res = $writer.write_fmt(format_args!($($arg)*));
+
+        if enabled {
+            x86_64::instructions::interrupts::enable();
+        }
+
+        res.unwrap();
+    };
+
+    ($($arg:tt)*) => {
+        let mut writer = VGAWriter::default();
+        vprintln!(writer, $($arg)*);
     }
 }
