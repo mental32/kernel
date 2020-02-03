@@ -112,7 +112,7 @@ impl<'a, T: VGABuffer> VGAWriter<'a, T> {
                 self.cursor.y += 1;
                 self.cursor.x = 0;
 
-                if self.cursor.y > self.buffer.height() {
+                if self.cursor.y >= self.buffer.height() {
                     self.scroll()?;
                     self.clear_row(self.buffer.height() - 1)?;
                     self.cursor.y = self.buffer.height() - 1;
@@ -301,7 +301,12 @@ impl<'a, T: VGABuffer> VGAWriter<'a, T> {
     fn scroll(&mut self) -> crate::Result<()> {
         for row in 1..self.buffer.height() {
             for col in 0..self.buffer.width() {
-                let char_ = self.buffer.read(row, col);
+                assert!(row < self.buffer.height());
+                assert!(col < self.buffer.width());
+
+                let char_ = self.buffer.read(col, row)?;
+
+                assert!((row - 1) < self.buffer.height());
                 self.buffer.write(col, row - 1, char_)?;
             }
         }

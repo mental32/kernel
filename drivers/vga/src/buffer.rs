@@ -15,7 +15,7 @@ pub trait VGABuffer {
     fn write(&mut self, x: usize, y: usize, ch: Char) -> crate::Result<()>;
 
     /// Read a character at position x, y.
-    fn read(&self, x: usize, y: usize) -> Char;
+    fn read(&self, x: usize, y: usize) -> crate::Result<Char>;
 }
 
 /// Buffer width constant that is used as the default width.
@@ -59,7 +59,12 @@ impl VGABuffer for DefaultBuffer {
         Ok(())
     }
 
-    fn read(&self, x: usize, y: usize) -> Char {
-        self.data[y][x].read()
+    fn read(&self, x: usize, y: usize) -> crate::Result<Char> {
+        if y >= self.height() || x >= self.width() {
+            panic!("reading out of bounds {:?} {:?}", x, y);
+            return Err(FailureReason::OutOfBounds((self.width(), self.height())));
+        }
+
+        Ok(self.data[y][x].read())
     }
 }
