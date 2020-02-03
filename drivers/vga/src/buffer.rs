@@ -1,4 +1,7 @@
-use {super::Char, volatile::Volatile};
+use {
+    super::{Char, FailureReason},
+    volatile::Volatile,
+};
 
 /// A trait that allows different concrete implementations of a VGA buffer.
 pub trait VGABuffer {
@@ -47,6 +50,11 @@ impl VGABuffer for DefaultBuffer {
     }
 
     fn write(&mut self, x: usize, y: usize, ch: Char) -> crate::Result<()> {
+        if y >= self.height() || x >= self.width() {
+            panic!("{:?} {:?} {:?}", x, y, ch);
+            return Err(FailureReason::OutOfBounds((self.width(), self.height())));
+        }
+
         self.data[y][x].write(ch);
         Ok(())
     }

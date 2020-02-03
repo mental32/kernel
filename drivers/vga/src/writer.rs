@@ -14,33 +14,27 @@ enum VGAStatus {
 }
 
 /// Struct responsible for writing data into the VGA address space.
-pub struct VGAWriter<'a> {
+pub struct VGAWriter<'a, T: VGABuffer> {
     /// The VGA cursor that gets used.
     pub cursor: VGACursor,
 
     attr: Attribute,
-    buffer: &'a mut dyn VGABuffer,
+    buffer: &'a mut T,
     csi_param: Option<usize>,
     status: VGAStatus,
 }
 
-impl<'a> Write for VGAWriter<'a> {
+impl<'a, T: VGABuffer> Write for VGAWriter<'a, T> {
     fn write_str(&mut self, st: &str) -> fmt::Result {
         self.print_str(st).unwrap();
         Ok(())
     }
 }
 
-impl<'a> Default for VGAWriter<'a> {
-    fn default() -> Self {
-        Self::new(DefaultBuffer::refrence())
-    }
-}
-
-impl<'a> VGAWriter<'a> {
+impl<'a, T: VGABuffer> VGAWriter<'a, T> {
     /// Create a new writer that operates over a fixed sized
     /// arena of video memory.
-    pub fn new(buffer: &'a mut (dyn VGABuffer + 'a)) -> Self {
+    pub fn new(buffer: &'a mut T) -> Self {
         Self {
             attr: Attribute::default(),
             cursor: VGACursor::new(buffer.width(), buffer.height()),
@@ -148,6 +142,8 @@ impl<'a> VGAWriter<'a> {
             col = 0;
         }
 
+        assert!(row < self.buffer.height());
+        assert!(col < self.buffer.width());
         self.set_byte(col, row, ch as u8)?;
 
         col += 1;
