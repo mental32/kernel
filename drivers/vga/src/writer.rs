@@ -104,6 +104,8 @@ impl<'a> VGAWriter<'a> {
 
                 if self.cursor.y > self.buffer.height() {
                     self.scroll()?;
+                    self.clear_row(self.buffer.height() - 1)?;
+                    self.cursor.y = self.buffer.height() - 1;
                 }
             }
 
