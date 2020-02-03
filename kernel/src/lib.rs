@@ -15,12 +15,6 @@ use {
     lazy_static::lazy_static,
 };
 
-lazy_static! {
-    /// global static refrence to the kernel state.
-    pub static ref KERNEL_STATE_OBJECT: Option<RwLock<KernelStateObject>> = { None };
-}
-
-
 /// Kernel main start point.
 #[no_mangle]
 pub unsafe extern "C" fn kmain(multiboot_addr: usize) {
