@@ -6,7 +6,6 @@
 //! A muggle blood kernel written in Rust, C and Haskell, with an embedded
 //! WASM runtime.
 
-mod driver;
 mod gdt;
 mod isr;
 mod pic;
@@ -57,9 +56,7 @@ pub unsafe extern "C" fn kmain(multiboot_addr: usize) -> ! {
 
     interrupts::enable();
 
-    for page in (*PML4).iter().filter(|page| !page.flags().is_empty()) {
-        vprint!("{:?}\n", page);
-    }
+    serial::sprintln!("{}", "Hello, World!");
 
     loop {
         hlt()

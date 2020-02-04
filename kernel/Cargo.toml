@@ -8,7 +8,10 @@ edition = "2018"
 crate-type = ["staticlib"]
 
 [dependencies]
+# Local deps
 vga = { path = "../drivers/vga" }
+serial = { path = "../drivers/serial" }
+# Other deps
 x86_64 = "0.8.3"
 spin = "0.5.2"
 multiboot2 = "0.8.1"
