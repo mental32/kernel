@@ -1,19 +1,21 @@
+arch   ?= x86_64
+
 export common := $(abspath ./common)
+export target ?= target-$(arch)
+export kernel_blob := $(abspath ./build/kernel-$(arch).bin)
 
 GRUB_MKRESCUE = grub-mkrescue
-
-arch   ?= x86_64
-export target ?= target-$(arch)
+QEMU := qemu-system-$(arch)
 
 iso    := ./build/kernel-$(arch).iso
-
 grub_cfg := $(common)/grub.cfg
-
-export kernel_blob := $(abspath ./build/kernel-$(arch).bin)
 
 .PHONY: all kernel
 
 all: $(iso)
+
+qemu: all
+	$(QEMU) -drive format=raw,file=$(iso) -m 512M -serial stdio
 
 $(iso): kernel $(grub_cfg)
 	mkdir -p ./build/isofiles/boot/grub
