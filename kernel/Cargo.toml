@@ -11,6 +11,7 @@ crate-type = ["staticlib"]
 # Local deps
 vga = { path = "../drivers/vga" }
 serial = { path = "../drivers/serial" }
+pic = { path = "../drivers/pic" }
 # Other deps
 linked_list_allocator = "0.6.6"
 x86_64 = "0.8.3"

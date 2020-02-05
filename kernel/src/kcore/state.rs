@@ -21,7 +21,10 @@ use {
 };
 
 use {
-    super::result::{KernelException, Result as KernelResult},
+    super::{
+        isr,
+        result::{KernelException, Result as KernelResult},
+    },
     crate::{gdt::ExposedGlobalDescriptorTable, isr::InterruptHandlers, pic::PICS},
     vga::vprint,
 };
@@ -111,8 +114,7 @@ impl KernelStateObject {
         load_tss(self.selectors.tss_selector.unwrap());
 
         // IDT
-        Self::set_isr_handlers(&mut self.idt);
-        ChainedPics::set_isr_handlers(&mut self.idt);
+        isr::map_default_handlers(&mut self.idt);
         self.load_idt();
 
         self.pic = Some(&(*PICS));
@@ -158,37 +160,4 @@ impl KernelStateObject {
 
         lidt(&ptr);
     }
-}
-
-impl InterruptHandlers for KernelStateObject {
-    fn set_isr_handlers(idt: &mut InterruptDescriptorTable) {
-        idt.breakpoint.set_handler_fn(breakpoint_handler);
-        idt.double_fault.set_handler_fn(double_fault_handler);
-        idt.page_fault.set_handler_fn(page_fault_handler);
-    }
-}
-
-extern "x86-interrupt" fn breakpoint_handler(stack_frame: &mut InterruptStackFrame) {
-    let mut writer = vga::GLOBAL_WRITER.lock();
-    writer.print_fill_char(' ').unwrap();
-    vprint!("Breakpoint!\n{:#?}", stack_frame);
-}
-
-extern "x86-interrupt" fn double_fault_handler(
-    stack_frame: &mut InterruptStackFrame,
-    _error_code: u64,
-) -> ! {
-    panic!("Double fault!\n{:#?}", stack_frame);
-}
-
-extern "x86-interrupt" fn page_fault_handler(
-    stack_frame: &mut InterruptStackFrame,
-    error_code: PageFaultErrorCode,
-) {
-    panic!(
-        "Page fault!\nAccessed Address: {:?}\nError Code: {:?}, {:#?}",
-        Cr2::read(),
-        error_code,
-        stack_frame
-    );
 }

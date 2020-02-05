@@ -11,7 +11,6 @@ mod gdt;
 mod isr;
 mod kcore;
 mod mm;
-mod pic;
 mod sched;
 mod vfs;
 
@@ -39,9 +38,6 @@ lazy_static! {
 }
 
 extern crate alloc;
-extern "C" {
-    static PML4: *mut PageTable;
-}
 
 /// Kernel main start point.
 #[no_mangle]
