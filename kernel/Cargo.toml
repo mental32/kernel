@@ -12,6 +12,7 @@ crate-type = ["staticlib"]
 vga = { path = "../drivers/vga" }
 serial = { path = "../drivers/serial" }
 # Other deps
+linked_list_allocator = "0.6.6"
 x86_64 = "0.8.3"
 spin = "0.5.2"
 multiboot2 = "0.8.1"
