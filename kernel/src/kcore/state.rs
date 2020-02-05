@@ -1,7 +1,7 @@
+use core::{fmt::Write, mem::size_of};
+
 use {
-    crate::{gdt::ExposedGlobalDescriptorTable, isr::InterruptHandlers, pic::PICS},
     bit_field::BitField,
-    core::mem::size_of,
     multiboot2::BootInformation,
     pic8259_simple::ChainedPics,
     spin::Mutex,
@@ -10,13 +10,20 @@ use {
             segmentation::set_cs,
             tables::{lidt, load_tss, DescriptorTablePointer},
         },
+        registers::control::Cr2,
         structures::{
             gdt::{Descriptor, DescriptorFlags, SegmentSelector},
-            idt::InterruptDescriptorTable,
+            idt::{InterruptDescriptorTable, InterruptStackFrame, PageFaultErrorCode},
             tss::TaskStateSegment,
         },
         VirtAddr,
     },
+};
+
+use {
+    super::result::{KernelException, Result as KernelResult},
+    crate::{gdt::ExposedGlobalDescriptorTable, isr::InterruptHandlers, pic::PICS},
+    vga::vprint,
 };
 
 struct Selectors {
@@ -25,7 +32,7 @@ struct Selectors {
 }
 
 /// A struct that journals the kernels state.
-pub(crate) struct KernelStateObject {
+pub struct KernelStateObject {
     pic: Option<&'static Mutex<ChainedPics>>,
     gdt: ExposedGlobalDescriptorTable,
     idt: InterruptDescriptorTable,
@@ -54,7 +61,13 @@ impl KernelStateObject {
         }
     }
 
-    pub unsafe fn prepare(&mut self, _boot_info: &BootInformation) -> crate::result::Result<()> {
+    pub unsafe fn prepare(&mut self, _boot_info: &BootInformation) -> KernelResult<()> {
+        if self.pic.is_some() {
+            return Err(KernelException::IllegalDoubleCall(
+                "Attempted to call KernelStateObject::prepare twice.",
+            ));
+        }
+
         // TSS
         self.tss.interrupt_stack_table[0] = {
             const STACK_SIZE: usize = 4096;
@@ -109,8 +122,31 @@ impl KernelStateObject {
             handle.initialize();
         }
 
-        // ALLOCATOR
         // PAGING
+
+        // ALLOCATOR
+        // pub fn init_heap(
+        // mapper: &mut impl Mapper<Size4KiB>,
+        // frame_allocator: &mut impl FrameAllocator<Size4KiB>,
+        // ) -> Result<(), MapToError> {
+        // let page_range = {
+        //     let heap_start = VirtAddr::new(HEAP_START as u64);
+        //     let heap_end = heap_start + HEAP_SIZE - 1u64;
+        //     let heap_start_page = Page::containing_address(heap_start);
+        //     let heap_end_page = Page::containing_address(heap_end);
+        //     Page::range_inclusive(heap_start_page, heap_end_page)
+        // };
+
+        // for page in page_range {
+        //     let frame = frame_allocator
+        //         .allocate_frame()
+        //         .ok_or(MapToError::FrameAllocationFailed)?;
+        //     let flags = PageTableFlags::PRESENT | PageTableFlags::WRITABLE;
+        //     mapper.map_to(page, frame, flags, frame_allocator)?.flush();
+        // }
+
+        // ALLOCATOR.lock().init(HEAP_START, HEAP_SIZE);
+
         Ok(())
     }
 
@@ -122,4 +158,37 @@ impl KernelStateObject {
 
         lidt(&ptr);
     }
+}
+
+impl InterruptHandlers for KernelStateObject {
+    fn set_isr_handlers(idt: &mut InterruptDescriptorTable) {
+        idt.breakpoint.set_handler_fn(breakpoint_handler);
+        idt.double_fault.set_handler_fn(double_fault_handler);
+        idt.page_fault.set_handler_fn(page_fault_handler);
+    }
+}
+
+extern "x86-interrupt" fn breakpoint_handler(stack_frame: &mut InterruptStackFrame) {
+    let mut writer = vga::GLOBAL_WRITER.lock();
+    writer.print_fill_char(' ').unwrap();
+    vprint!("Breakpoint!\n{:#?}", stack_frame);
+}
+
+extern "x86-interrupt" fn double_fault_handler(
+    stack_frame: &mut InterruptStackFrame,
+    _error_code: u64,
+) -> ! {
+    panic!("Double fault!\n{:#?}", stack_frame);
+}
+
+extern "x86-interrupt" fn page_fault_handler(
+    stack_frame: &mut InterruptStackFrame,
+    error_code: PageFaultErrorCode,
+) {
+    panic!(
+        "Page fault!\nAccessed Address: {:?}\nError Code: {:?}, {:#?}",
+        Cr2::read(),
+        error_code,
+        stack_frame
+    );
 }

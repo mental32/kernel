@@ -30,12 +30,14 @@ impl InterruptHandlers for ChainedPics {
     }
 }
 
-extern "x86-interrupt" fn timer_interrupt_handler(_stack_frame: &mut InterruptStackFrame) {
-    let mut handle = PICS.lock();
+macro_rules! eoi {
+    ($pics:ident, $irq:expr) => {
+        unsafe { $pics.lock().notify_end_of_interrupt($irq as u8) }
+    };
+}
 
-    unsafe {
-        handle.notify_end_of_interrupt(InterruptIndex::Timer as u8);
-    }
+extern "x86-interrupt" fn timer_interrupt_handler(_stack_frame: &mut InterruptStackFrame) {
+    eoi!(PICS, InterruptIndex::Timer);
 }
 
 extern "x86-interrupt" fn keyboard_interrupt_handler(_stack_frame: &mut InterruptStackFrame) {
@@ -65,8 +67,5 @@ extern "x86-interrupt" fn keyboard_interrupt_handler(_stack_frame: &mut Interrup
         }
     }
 
-    unsafe {
-        PICS.lock()
-            .notify_end_of_interrupt(InterruptIndex::Keyboard as u8);
-    }
+    eoi!(PICS, InterruptIndex::Keyboard);
 }

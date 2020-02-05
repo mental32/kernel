@@ -2,34 +2,43 @@
 #![forbid(missing_docs)]
 #![feature(lang_items)]
 #![feature(abi_x86_interrupt)]
+#![feature(alloc_error_handler)]
 
 //! A muggle blood kernel written in Rust, C and Haskell, with an embedded
 //! WASM runtime.
 
 mod gdt;
 mod isr;
+mod kcore;
+mod mm;
 mod pic;
-mod result;
-mod state;
+mod sched;
+mod vfs;
+
+use core::fmt::Write;
 
 use {
-    core::fmt::Write,
     lazy_static::lazy_static,
     multiboot2::load,
     spin::Mutex,
-    state::KernelStateObject,
-    vga::{vprint, DefaultBuffer, DefaultWriter},
     x86_64::{
         instructions::{hlt, interrupts},
         structures::paging::PageTable,
     },
 };
 
+use {
+    kcore::state::KernelStateObject,
+    sched::{KernelScheduler, RoundRobin},
+    vga::{vprint, DefaultBuffer, DefaultWriter},
+};
+
 lazy_static! {
-    pub(crate) static ref KERNEL_STATE_OBJECT: Mutex<Option<KernelStateObject>> =
-        { Mutex::new(None) };
+    pub(crate) static ref KERNEL_STATE_OBJECT: Mutex<KernelStateObject> =
+        { Mutex::new(KernelStateObject::new()) };
 }
 
+extern crate alloc;
 extern "C" {
     static PML4: *mut PageTable;
 }
@@ -38,7 +47,6 @@ extern "C" {
 #[no_mangle]
 pub unsafe extern "C" fn kmain(multiboot_addr: usize) -> ! {
     let boot_info = load(multiboot_addr);
-    let mut state = KernelStateObject::new();
 
     // Setting everything up for regular work.
     // The call to ``KernelStateObject::prepare`` will:
@@ -47,16 +55,17 @@ pub unsafe extern "C" fn kmain(multiboot_addr: usize) -> ! {
     //  - Initialize the global allocator and memory manager
     //  - Resize, reallocate or modify current pages and setup a heap.
 
-    state.prepare(&boot_info).unwrap();
-
     {
-        let mut handle = KERNEL_STATE_OBJECT.lock();
-        *handle = Some(state);
+        let mut state = (*KERNEL_STATE_OBJECT).lock();
+        state.prepare(&boot_info).unwrap();
     }
 
     interrupts::enable();
 
-    serial::sprintln!("{}", "Hello, World!");
+    let mut executor = RoundRobin::new(&(*KERNEL_STATE_OBJECT));
+
+    executor.spawn(vfs::launch).unwrap();
+    executor.run_forever().unwrap();
 
     loop {
         hlt()
