@@ -3,7 +3,6 @@ use core::mem::size_of;
 use {
     bit_field::BitField,
     multiboot2::BootInformation,
-    pic8259_simple::ChainedPics,
     spin::Mutex,
     x86_64::{
         instructions::{
@@ -20,6 +19,8 @@ use {
     },
 };
 
+use {pic8259::ChainedPics, pit825x::ProgrammableIntervalTimer};
+
 use {
     super::{
         isr::{self, pics::PICS},
@@ -35,7 +36,10 @@ struct Selectors {
 
 /// A struct that journals the kernels state.
 pub struct KernelStateObject {
+    // Hardware
     pic: Option<&'static Mutex<ChainedPics>>,
+    pit: Option<&'static Mutex<ProgrammableIntervalTimer>>,
+    // Structures
     gdt: ExposedGlobalDescriptorTable,
     idt: InterruptDescriptorTable,
     tss: TaskStateSegment,
@@ -59,6 +63,7 @@ impl KernelStateObject {
             tss,
             gdt,
             pic: None,
+            pit: None,
         }
     }
 

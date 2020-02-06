@@ -6,7 +6,8 @@ use {
 };
 
 use {
-    pic::{eoi, ChainedPics, InterruptIndex},
+    pic8259::{eoi, ChainedPics, InterruptIndex},
+    pit825x::ProgrammableIntervalTimer,
     serial::sprintln,
 };
 
@@ -20,6 +21,10 @@ lazy_static! {
     /// Static refrence to ``Mutex<ChainedPics>``.
     pub static ref PICS: Mutex<ChainedPics> =
         { Mutex::new(unsafe { ChainedPics::new(PIC_1_OFFSET, PIC_2_OFFSET) }) };
+
+    /// Global static refrence to the PIT.
+    pub static ref PIT: Mutex<ProgrammableIntervalTimer> =
+        { Mutex::new(ProgrammableIntervalTimer::from(0)) };
 }
 
 // Interrupt Handlers.

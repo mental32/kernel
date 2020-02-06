@@ -1,9 +1,9 @@
 pub mod cpu;
 pub mod pics;
 
-use x86_64::structures::idt::{InterruptDescriptorTable};
+use x86_64::structures::idt::InterruptDescriptorTable;
 
-use pic::InterruptIndex;
+use pic8259::InterruptIndex;
 
 use {cpu::*, pics::*};
 
