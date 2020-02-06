@@ -1,10 +1,8 @@
 [package]
-name = "pit"
+name = "pit825x"
 version = "0.1.0"
 authors = ["mental <m3nta1@yahoo.com>"]
 edition = "2018"
 
 [dependencies]
-spin = "0.5.2"
 cpuio = "0.2.0"
-lazy_static = { version = "1.4.0", features = ["spin_no_std"] }
