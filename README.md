@@ -29,26 +29,36 @@ Lets try writing a small kernel in C, Rust and Haskell.
 
 ### [Goals](#Abstract)
 
- - *Should support AMD86 and work in 64bit mode w/ full paging*
- - *Should perform basic co-operative multitasking*
+ - *Should support IA-32/AMD64 and work in 64bit mode w/ full paging.*
+ - *Should perform basic co-operative or pre-emptive multitasking.*
  - *Should be written in Haskell as much as possible.*
    - C, Assembly or Rust should only be used where required for functionality or performance reasons.
 
 #### [Optional](#Goals)
 
  - *Could, support userland and syscalls*
- - *Could, provide a "complete" libc where possible.*"
+ - *Could, provide a "complete" libc where possible.*
  - *Could, embed a webassembly runtime engine*
 
 ## [Progress](#Index)
 
- - [ ] Build system
-     - [ ] Bootstrapping
- - [ ] IO/Memory memes
-    - [ ] Compilmentary VGA Driver
-    - [ ] Compilmentary Keyboard Driver (UK-GB layout)
+ - [x] Build system
+     - [x] Bootstrapping
+
+ - [ ] Drivers
+    - [x] VGA Text mode driver
+    - [x] Keyboard driver (UK-GB layout)
+    - [x] Pic8259
+    - [x] Pit825x
+    - [ ] VBE driver
+    - [ ] APIC
+    - [ ] ACPI
+    - [ ] RTC
+    - [ ] WASM
+
  - [ ] Haskell RTS
      - [ ] Multitasking
+
  - [ ] The Kernel (All of the above.)
 
 ## [Related projects](#Index)
