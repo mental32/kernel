@@ -1,4 +1,4 @@
-use core::{fmt::Write, mem::size_of};
+use core::mem::size_of;
 
 use {
     bit_field::BitField,
@@ -48,7 +48,6 @@ impl KernelStateObject {
         let idt = InterruptDescriptorTable::new();
         let tss = TaskStateSegment::new();
         let gdt = ExposedGlobalDescriptorTable::new();
-        let pic = None;
 
         let selectors = Selectors {
             code_selector: None,
@@ -60,7 +59,7 @@ impl KernelStateObject {
             idt,
             tss,
             gdt,
-            pic,
+            pic: None,
         }
     }
 

@@ -8,7 +8,6 @@
 //! WASM runtime.
 
 mod gdt;
-mod isr;
 mod kcore;
 mod mm;
 mod sched;
@@ -22,13 +21,12 @@ use {
     spin::Mutex,
     x86_64::{
         instructions::{hlt, interrupts},
-        structures::paging::PageTable,
     },
 };
 
 use {
     kcore::state::KernelStateObject,
-    sched::{KernelScheduler, RoundRobin},
+    sched::{RoundRobin},
     vga::{vprint, DefaultBuffer, DefaultWriter},
 };
 
@@ -58,10 +56,10 @@ pub unsafe extern "C" fn kmain(multiboot_addr: usize) -> ! {
 
     interrupts::enable();
 
-    let mut executor = RoundRobin::new(&(*KERNEL_STATE_OBJECT));
+    let _executor = RoundRobin::new(&(*KERNEL_STATE_OBJECT));
 
-    executor.spawn(vfs::launch).unwrap();
-    executor.run_forever().unwrap();
+    // executor.spawn(vfs::launch).unwrap();
+    // executor.run_forever().unwrap();
 
     loop {
         hlt()

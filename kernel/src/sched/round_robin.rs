@@ -1,4 +1,4 @@
-use alloc::collections::VecDeque;
+
 
 use spin::Mutex;
 
@@ -16,7 +16,7 @@ pub struct RoundRobin {
 }
 
 impl RoundRobin {
-    pub fn new(state: &Mutex<KernelStateObject>) -> Self {
+    pub fn new(_state: &Mutex<KernelStateObject>) -> Self {
         // let threads = VecDeque::new();
         let threads = [ThreadControlBlock::new(0), ThreadControlBlock::new(1)];
         Self { threads }
@@ -32,11 +32,11 @@ impl KernelScheduler for RoundRobin {
         Err("Cant park")
     }
 
-    fn spawn(&mut self, f: impl FnOnce() -> ()) -> Result<ThreadIdent, &'static str> {
+    fn spawn(&mut self, _f: impl FnOnce() -> ()) -> Result<ThreadIdent, &'static str> {
         Err("Cant spawn")
     }
 
-    fn exists(&self, ident: ThreadIdent) -> bool {
+    fn exists(&self, _ident: ThreadIdent) -> bool {
         false
     }
 
