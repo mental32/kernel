@@ -6,6 +6,8 @@
 //! This crate uses the pic8259_simple crate under the hood and attempts
 //! to expand upon it in a portable manner.
 //!
+//! # Background
+//!
 //! The 8259 Programmable Interrupt Controller (PIC) is one of the most
 //! important chips making up the x86 architecture. Without it, the x86
 //! architecture would not be an interrupt driven architecture. The
@@ -16,7 +18,7 @@
 //! It is important to note that APIC has replaced the 8259 PIC in more modern
 //! systems, especially those with multiple cores/processors.
 //!
-//! # What does the 8259 PIC do?
+//! ## What does the 8259 PIC do?
 //!
 //! The 8259 PIC controls the CPU's interrupt mechanism, by accepting several
 //! interrupt requests and feeding them to the processor in order. For instance,
@@ -33,60 +35,9 @@
 //! which means you don't waste time going to the devices, you let the devices
 //! come to you when they are ready.
 
-pub use pic8259_simple::ChainedPics;
+mod index;
 
-/// InterruptIndex enum that is used for mapping out pic interrupt vectors.
-#[derive(Debug, Clone, Copy)]
-#[repr(u8)]
-pub enum InterruptIndex {
-    /// Programmable Interrupt Timer (PIT) Interrupt vector,
-    Timer = 0,
-
-    /// Keyboard Interrupt vector.
-    PS2Keyboard,
-
-    /// Cascade (used internally by the two PICs. never raised).
-    Cascade,
-
-    /// COM2 (if enabled.)
-    COM2,
-
-    /// COM1 (if enabled.)
-    COM1,
-
-    /// LPT2 (if enabled.)
-    LPT2,
-
-    /// Floppy Disk.
-    FloppyDisk,
-
-    /// LPT1 / Unreliable "spurious" interrupt (usually).
-    LPT1,
-
-    /// CMOS real-time clock (if enabled).
-    CMOS,
-
-    /// Free for peripherals / legacy SCSI / NIC
-    NIC1,
-
-    /// Free for peripherals / SCSI / NIC
-    NIC2,
-
-    /// Free for peripherals / SCSI / NIC
-    NIC3,
-
-    /// PS2 Mouse.
-    PS2Mouse,
-
-    /// FPU / Coprocessor / Inter-processor.
-    FPUCoprocessor,
-
-    /// Primary ATA Hard Disk.
-    PrimaryATA,
-
-    /// Secondary ATA Hard Disk.
-    SecondaryATA,
-}
+pub use {index::*, pic8259_simple::ChainedPics};
 
 /// Each pic interrupt must be met with an end of interrupt.
 #[macro_export]
