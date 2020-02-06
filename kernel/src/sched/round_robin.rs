@@ -1,5 +1,3 @@
-
-
 use spin::Mutex;
 
 use {
@@ -7,7 +5,7 @@ use {
         scheduler::KernelScheduler,
         thread::{ThreadControlBlock, ThreadIdent},
     },
-    crate::kcore::state::KernelStateObject,
+    crate::state::KernelStateObject,
 };
 
 pub struct RoundRobin {

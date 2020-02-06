@@ -8,9 +8,11 @@
 //! WASM runtime.
 
 mod gdt;
-mod kcore;
+mod isr;
 mod mm;
+mod result;
 mod sched;
+mod state;
 mod vfs;
 
 use core::fmt::Write;
@@ -23,8 +25,8 @@ use {
 };
 
 use {
-    kcore::state::KernelStateObject,
     sched::RoundRobin,
+    state::KernelStateObject,
     vga::{vprint, DefaultBuffer, DefaultWriter},
 };
 

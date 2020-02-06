@@ -21,15 +21,13 @@ use {
 
 use {pic8259::ChainedPics, pit825x::ProgrammableIntervalTimer};
 
-use {
-    super::{
-        isr::{
-            self,
-            pics::{PICS, PIT},
-        },
-        result::{KernelException, Result as KernelResult},
+use crate::{
+    gdt::ExposedGlobalDescriptorTable,
+    isr::{
+        self,
+        pics::{PICS, PIT},
     },
-    crate::gdt::ExposedGlobalDescriptorTable,
+    result::{KernelException, Result as KernelResult},
 };
 
 struct Selectors {
@@ -76,6 +74,30 @@ impl KernelStateObject {
                 "Attempted to call KernelStateObject::prepare twice.",
             ));
         }
+
+        // PAGING
+
+        // ALLOCATOR
+        // let mapper: &mut dyn Mapper<Size4KiB> = None;
+        // let frame_allocator: &mut dyn FrameAllocator<Size4KiB> = None;
+
+        // let page_range = {
+        //     let heap_start = VirtAddr::new(HEAP_START as u64);
+        //     let heap_end = heap_start + HEAP_SIZE - 1u64;
+        //     let heap_start_page = Page::containing_address(heap_start);
+        //     let heap_end_page = Page::containing_address(heap_end);
+        //     Page::range_inclusive(heap_start_page, heap_end_page)
+        // };
+
+        // for page in page_range {
+        //     let frame = frame_allocator
+        //         .allocate_frame()
+        //         .ok_or(MapToError::FrameAllocationFailed)?;
+        //     let flags = PageTableFlags::PRESENT | PageTableFlags::WRITABLE;
+        //     mapper.map_to(page, frame, flags, frame_allocator)?.flush();
+        // }
+
+        // ALLOCATOR.lock().init(HEAP_START, HEAP_SIZE);
 
         // TSS
         self.tss.interrupt_stack_table[0] = {
@@ -136,31 +158,6 @@ impl KernelStateObject {
             let mut handle = self.pit.unwrap().lock();
             handle.set_frequency(1000);
         }
-
-        // PAGING
-
-        // ALLOCATOR
-        // pub fn init_heap(
-        // mapper: &mut impl Mapper<Size4KiB>,
-        // frame_allocator: &mut impl FrameAllocator<Size4KiB>,
-        // ) -> Result<(), MapToError> {
-        // let page_range = {
-        //     let heap_start = VirtAddr::new(HEAP_START as u64);
-        //     let heap_end = heap_start + HEAP_SIZE - 1u64;
-        //     let heap_start_page = Page::containing_address(heap_start);
-        //     let heap_end_page = Page::containing_address(heap_end);
-        //     Page::range_inclusive(heap_start_page, heap_end_page)
-        // };
-
-        // for page in page_range {
-        //     let frame = frame_allocator
-        //         .allocate_frame()
-        //         .ok_or(MapToError::FrameAllocationFailed)?;
-        //     let flags = PageTableFlags::PRESENT | PageTableFlags::WRITABLE;
-        //     mapper.map_to(page, frame, flags, frame_allocator)?.flush();
-        // }
-
-        // ALLOCATOR.lock().init(HEAP_START, HEAP_SIZE);
 
         Ok(())
     }
