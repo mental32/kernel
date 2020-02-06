@@ -1,7 +1,6 @@
 extern kmain
 
 global _start
-global PML4
 
 section .rodata
 
