@@ -19,14 +19,12 @@ use {
     lazy_static::lazy_static,
     multiboot2::load,
     spin::Mutex,
-    x86_64::{
-        instructions::{hlt, interrupts},
-    },
+    x86_64::instructions::{hlt, interrupts},
 };
 
 use {
     kcore::state::KernelStateObject,
-    sched::{RoundRobin},
+    sched::RoundRobin,
     vga::{vprint, DefaultBuffer, DefaultWriter},
 };
 

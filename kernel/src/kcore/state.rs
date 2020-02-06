@@ -23,7 +23,10 @@ use {pic8259::ChainedPics, pit825x::ProgrammableIntervalTimer};
 
 use {
     super::{
-        isr::{self, pics::PICS},
+        isr::{
+            self,
+            pics::{PICS, PIT},
+        },
         result::{KernelException, Result as KernelResult},
     },
     crate::gdt::ExposedGlobalDescriptorTable,
@@ -125,6 +128,13 @@ impl KernelStateObject {
         {
             let mut handle = self.pic.unwrap().lock();
             handle.initialize();
+        }
+
+        self.pit = Some(&(*PIT));
+
+        {
+            let mut handle = self.pit.unwrap().lock();
+            handle.set_frequency(1000);
         }
 
         // PAGING
