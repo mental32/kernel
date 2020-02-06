@@ -1,21 +1,31 @@
-use core::fmt::Write;
-
 use {
     lazy_static::lazy_static,
     pc_keyboard::{layouts, DecodedKey, HandleControl, Keyboard, ScancodeSet1},
-    x86_64::instructions::port::Port,
+    spin::Mutex,
+    x86_64::{instructions::port::Port, structures::idt::InterruptStackFrame},
 };
 
-use {pic::PICS, vga::vprint};
+use {
+    pic::{eoi, ChainedPics, InterruptIndex},
+    serial::sprintln,
+};
 
-macro_rules! eoi {
-    ($pics:ident, $irq:expr) => {
-        unsafe { $pics.lock().notify_end_of_interrupt($irq as u8) }
-    };
+/// IRQ offset for the slave pic.
+pub const PIC_1_OFFSET: u8 = 32;
+
+/// IRQ offset for the master pic.
+pub const PIC_2_OFFSET: u8 = PIC_1_OFFSET + 8;
+
+lazy_static! {
+    /// Static refrence to ``Mutex<ChainedPics>``.
+    pub static ref PICS: Mutex<ChainedPics> =
+        { Mutex::new(unsafe { ChainedPics::new(PIC_1_OFFSET, PIC_2_OFFSET) }) };
 }
 
+// Interrupt Handlers.
+
 pub extern "x86-interrupt" fn timer_interrupt_handler(_stack_frame: &mut InterruptStackFrame) {
-    eoi!(PICS, InterruptIndex::Timer);
+    eoi!(PIC_1_OFFSET, PICS.lock(), InterruptIndex::Timer);
 }
 
 pub extern "x86-interrupt" fn keyboard_interrupt_handler(_stack_frame: &mut InterruptStackFrame) {
@@ -33,14 +43,14 @@ pub extern "x86-interrupt" fn keyboard_interrupt_handler(_stack_frame: &mut Inte
         if let Some(key) = keyboard.process_keyevent(key_event) {
             match key {
                 DecodedKey::Unicode(character) => {
-                    vprint!("{}", character);
+                    sprintln!("{}", character);
                 }
                 DecodedKey::RawKey(key) => {
-                    vprint!("{:?}", key);
+                    sprintln!("{:?}", key);
                 }
             }
         }
     }
 
-    eoi!(PICS, InterruptIndex::Keyboard);
+    eoi!(PIC_1_OFFSET, PICS.lock(), InterruptIndex::PS2Keyboard);
 }

@@ -22,11 +22,10 @@ use {
 
 use {
     super::{
-        isr,
+        isr::{self, pics::PICS},
         result::{KernelException, Result as KernelResult},
     },
-    crate::{gdt::ExposedGlobalDescriptorTable, isr::InterruptHandlers, pic::PICS},
-    vga::vprint,
+    crate::gdt::ExposedGlobalDescriptorTable,
 };
 
 struct Selectors {

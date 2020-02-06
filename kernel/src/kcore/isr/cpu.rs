@@ -1,5 +1,12 @@
+use x86_64::{
+    registers::control::Cr2,
+    structures::idt::{InterruptStackFrame, PageFaultErrorCode},
+};
+
+use serial::sprintln;
+
 pub extern "x86-interrupt" fn breakpoint_handler(stack_frame: &mut InterruptStackFrame) {
-    vprint!("Breakpoint!\n{:#?}", stack_frame);
+    sprintln!("Breakpoint!\n{:#?}", stack_frame);
 }
 
 pub extern "x86-interrupt" fn double_fault_handler(
