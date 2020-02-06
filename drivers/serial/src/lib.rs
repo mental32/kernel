@@ -3,6 +3,21 @@
 
 //! Primitive serial IO driver.
 //!
+//! Serial ports are a legacy communications port common on IBM-PC compatible
+//! computers. Use of serial ports for connecting peripherals has largely been
+//! deprecated in favor of USB and other modern peripheral interfaces, however
+//! it is still commonly used in certain industries for interfacing with
+//! industrial hardware such as CNC machines or commercial devices such as POS
+//! terminals. Historically it was common for many dial-up modems to be
+//! connected via a computer's serial port, and the design of the underlying
+//! UART hardware itself reflects this.
+//!
+//! Serial ports are typically controlled by UART hardware. This is the
+//! hardware chip responsible for encoding and decoding the data sent over the
+//! serial interface. Modern serial ports typically implement the RS-232 standard,
+//! and can use a variety of different connector interfaces. The DE-9 interface is
+//! the one most commonly used connector for serial ports in modern systems.
+//!
 //! # Examples
 //!
 //! ```
