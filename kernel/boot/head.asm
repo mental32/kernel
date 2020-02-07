@@ -96,15 +96,30 @@ _start:
 
 .paging:
 .paging.map:
+    ; Recursive map p4 to itself
+    mov eax, PML4
+    or eax, 0b11 ; present + writable
+    mov [PML4 + (8 * 511)], eax
+
     ; map first P4 entry to P3 table
     mov eax, PDPT
     or eax, 0b11 ; present + writable
     mov [PML4], eax
 
+    ; Recursive map a p3 to itself
+    mov eax, PDPT
+    or eax, 0b11 ; present + writable
+    mov [PDPT + (8 * 511)], eax
+
     ; map first P3 entry to P2 table
     mov eax, PDT
     or eax, 0b11 ; present + writable
     mov [PDPT], eax
+
+    ; Recursive map a p2 to itself
+    mov eax, PDT
+    or eax, 0b11 ; present + writable
+    mov [PDT + (8 * 511)], eax
 
     mov ecx, 0
 
