@@ -96,34 +96,46 @@ _start:
 
 .paging:
 .paging.map:
-    ; Recursive map p4 to itself
-    mov eax, PML4
-    or eax, 0b11 ; present + writable
-    mov [PML4 + (8 * 511)], eax
-
     ; map first P4 entry to P3 table
     mov eax, PDPT
     or eax, 0b11 ; present + writable
     mov [PML4], eax
 
-    ; Recursive map a p3 to itself
-    mov eax, PDPT
-    or eax, 0b11 ; present + writable
+    mov eax, PML4
+    or eax, 0b11
+
+    mov [PML4 + (8 * 511)], eax
     mov [PDPT + (8 * 511)], eax
+    mov [PDT + (8 * 511)], eax
+    mov [PT + (8 * 511)], eax
 
     ; map first P3 entry to P2 table
     mov eax, PDT
     or eax, 0b11 ; present + writable
     mov [PDPT], eax
 
-    ; Recursive map a p2 to itself
-    mov eax, PDT
-    or eax, 0b11 ; present + writable
-    mov [PDT + (8 * 511)], eax
-
     mov ecx, 0
 
-.paging.map.inner:
+.paging.map.smol:
+
+    mov eax, 0x1000  ; 4KiB
+    mul ecx          ; start address of ecx-th page
+
+    or eax, 0b01 ; present + writable
+    mov [PT + ecx * 8], eax
+
+    inc ecx
+    cmp ecx, 511
+    jne .paging.map.smol
+
+    ; Map that page table to the PDT
+    mov eax, PT
+    or eax, 0b11 ; present + writable
+    mov [PDT], eax
+
+    mov ecx, 1
+
+.paging.map.huge:
 
     mov eax, 0x200000  ; 2MiB
     mul ecx            ; start address of ecx-th page
@@ -132,8 +144,8 @@ _start:
     mov [PDT + ecx * 8], eax
 
     inc ecx
-    cmp ecx, 512
-    jne .paging.map.inner
+    cmp ecx, 511
+    jne .paging.map.huge
 
 .paging.enable:
 
