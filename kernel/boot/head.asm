@@ -30,6 +30,9 @@ section .text
 bits 32
 
 _start:
+    ; We should be loaded by a multiboot2 compliant bootloader, info:
+    ; https://www.gnu.org/software/grub/manual/multiboot2/multiboot.html#Machine-state
+
     cmp eax, 0x36d76289
     jne .error
 

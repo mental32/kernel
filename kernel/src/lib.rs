@@ -45,12 +45,14 @@ extern crate alloc;
 pub unsafe extern "C" fn kmain(multiboot_addr: usize) -> ! {
     let boot_info = load(multiboot_addr);
 
+    vprint!("{:?}", &boot_info);
+
     // Setting everything up for regular work.
     // The call to ``KernelStateObject::prepare`` will:
     //  - Initialize the GDT & IDT
     //  - Load the appropriate code and tss selectors
     //  - Initialize the global allocator and memory manager
-    //  - Resize, reallocate or modify current pages and setup a heap.
+    //  - Resize, remap or modify current [kernel] pages and setup a heap.
 
     {
         let mut state = (*KERNEL_STATE_OBJECT).lock();
