@@ -7,6 +7,9 @@
 //! A muggle blood kernel written in Rust, C and Haskell, with an embedded
 //! WASM runtime.
 
+#[cfg(not(any(target_arch = "x86_64")))]
+compile_error!("This kernel only supports the (AMD) x86_64 architecture.");
+
 mod gdt;
 mod isr;
 mod mm;
