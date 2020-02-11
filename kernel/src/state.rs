@@ -3,23 +3,27 @@ use core::mem::size_of;
 use {
     bit_field::BitField,
     multiboot2::BootInformation,
-    spin::Mutex,
+    spin::{Mutex, RwLock},
     x86_64::{
         instructions::{
             segmentation::set_cs,
             tables::{lidt, load_tss, DescriptorTablePointer},
         },
-        registers::control::Cr2,
+        registers::control::{Cr2, Cr3, Cr3Flags},
         structures::{
             gdt::{Descriptor, DescriptorFlags, SegmentSelector},
             idt::{InterruptDescriptorTable, InterruptStackFrame, PageFaultErrorCode},
+            paging::{
+                frame::PhysFrame,
+                page_table::{PageTable, PageTableEntry, PageTableFlags},
+            },
             tss::TaskStateSegment,
         },
-        VirtAddr,
+        PhysAddr, VirtAddr,
     },
 };
 
-use {pic8259::ChainedPics, pit825x::ProgrammableIntervalTimer};
+use {pic8259::ChainedPics, pit825x::ProgrammableIntervalTimer, serial::sprintln};
 
 use crate::{
     gdt::ExposedGlobalDescriptorTable,
@@ -76,6 +80,39 @@ impl KernelStateObject {
         }
 
         // PAGING
+        use crate::mm::PAGE_MAP_LEVEL_4;
+
+        {
+            let mut pml4 = PAGE_MAP_LEVEL_4.write();
+            pml4.zero();
+
+            static mut PML3: PageTable = PageTable::new();
+
+            let mut base = 0x0;
+            let offset = 0x200000;
+
+            for entry in PML3.iter_mut() {
+                entry.set_addr(
+                    PhysAddr::new(base),
+                    PageTableFlags::PRESENT | PageTableFlags::WRITABLE | PageTableFlags::HUGE_PAGE,
+                );
+                base += offset;
+            }
+
+            for entry in pml4.iter_mut() {
+                entry.set_addr(
+                    PhysAddr::new(&PML3 as *const PageTable as u64),
+                    PageTableFlags::PRESENT | PageTableFlags::WRITABLE,
+                );
+                break;
+            }
+
+            let pml4_addr = &*pml4 as *const PageTable as u64;
+            let phys_addr = PhysAddr::new(pml4_addr);
+            Cr3::write(PhysFrame::containing_address(phys_addr), Cr3Flags::empty());
+
+            sprintln!("{:?}", pml4);
+        }
 
         // ALLOCATOR
         // let mapper: &mut dyn Mapper<Size4KiB> = None;
