@@ -10,6 +10,8 @@
 #[cfg(not(any(target_arch = "x86_64")))]
 compile_error!("This kernel only supports the (AMD) x86_64 architecture.");
 
+extern crate alloc;
+
 mod gdt;
 mod isr;
 mod mm;
@@ -33,12 +35,8 @@ use {
     vga::{vprint, DefaultBuffer, DefaultWriter},
 };
 
-lazy_static! {
-    pub(crate) static ref KERNEL_STATE_OBJECT: Mutex<KernelStateObject> =
-        { Mutex::new(KernelStateObject::new()) };
-}
-
-extern crate alloc;
+pub(crate) static KERNEL_STATE_OBJECT: Mutex<KernelStateObject> =
+    Mutex::new(KernelStateObject::new());
 
 /// Kernel main start point.
 #[no_mangle]
@@ -55,7 +53,7 @@ pub unsafe extern "C" fn kmain(multiboot_addr: usize) -> ! {
     //  - Resize, remap or modify current [kernel] pages and setup a heap.
 
     {
-        let mut state = (*KERNEL_STATE_OBJECT).lock();
+        let mut state = KERNEL_STATE_OBJECT.lock();
         state.prepare(&boot_info).unwrap();
     }
 

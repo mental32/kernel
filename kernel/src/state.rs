@@ -48,7 +48,7 @@ pub struct KernelStateObject {
 }
 
 impl KernelStateObject {
-    pub fn new() -> Self {
+    pub const fn new() -> Self {
         let idt = InterruptDescriptorTable::new();
         let tss = TaskStateSegment::new();
         let gdt = ExposedGlobalDescriptorTable::new();
