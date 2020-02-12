@@ -1,13 +1,12 @@
-use {
-    core::mem::size_of,
-    x86_64::{
-        instructions::tables::lgdt,
-        structures::{
-            gdt::{Descriptor, SegmentSelector},
-            DescriptorTablePointer,
-        },
-        PrivilegeLevel,
+use core::mem::size_of;
+
+use x86_64::{
+    instructions::tables::lgdt,
+    structures::{
+        gdt::{Descriptor, SegmentSelector},
+        DescriptorTablePointer,
     },
+    PrivilegeLevel,
 };
 
 #[derive(Debug, Clone)]

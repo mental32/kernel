@@ -59,8 +59,7 @@ pub unsafe extern "C" fn kmain(multiboot_addr: usize) -> ! {
 
     interrupts::enable();
 
-    let _executor = RoundRobin::new(&(*KERNEL_STATE_OBJECT));
-
+    // let _executor = RoundRobin::new(&(*KERNEL_STATE_OBJECT));
     // executor.spawn(vfs::launch).unwrap();
     // executor.run_forever().unwrap();
 
