@@ -3,7 +3,6 @@ use {
     core::ptr::null_mut,
 };
 
-use linked_list_allocator::LockedHeap;
 
 /// The virtual address of where the heap will be mapped.
 pub const HEAP_START: usize = 0x_4444_4444_0000;
@@ -12,7 +11,7 @@ pub const HEAP_START: usize = 0x_4444_4444_0000;
 pub const HEAP_STEP: usize = 4 * 1024; // 4 KiB
 
 #[global_allocator]
-pub static ALLOCATOR: LockedHeap = LockedHeap::empty();
+static DUMMY: Dummy = Dummy {};
 
 pub struct Dummy;
 
