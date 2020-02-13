@@ -7,6 +7,8 @@ export kernel_blob := $(abspath ./build/kernel-$(arch).bin)
 GRUB_MKRESCUE = grub-mkrescue
 QEMU := qemu-system-$(arch)
 
+QEMU_MEM := 8M
+
 iso    := ./build/kernel-$(arch).iso
 grub_cfg := $(common)/grub.cfg
 
@@ -15,7 +17,7 @@ grub_cfg := $(common)/grub.cfg
 all: $(iso)
 
 qemu: all
-	$(QEMU) -drive format=raw,file=$(iso) -m 512M -serial stdio
+	$(QEMU) -drive format=raw,file=$(iso) -m $(QEMU_MEM) -serial stdio
 
 $(iso): kernel $(grub_cfg)
 	mkdir -p ./build/isofiles/boot/grub
