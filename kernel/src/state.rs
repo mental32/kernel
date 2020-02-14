@@ -73,20 +73,40 @@ impl KernelStateObject {
         }
     }
 
-    pub unsafe fn prepare(&mut self, _boot_info: &BootInformation) -> KernelResult<()> {
+    pub unsafe fn prepare(&mut self, boot_info: &BootInformation) -> KernelResult<()> {
         if self.pic.is_some() {
             return Err(KernelException::IllegalDoubleCall(
                 "Attempted to call KernelStateObject::prepare twice.",
             ));
         }
 
+        let map = boot_info.memory_map_tag().unwrap();
+        let last_addr = map
+            .memory_areas()
+            .into_iter()
+            .map(|area| area.end_address())
+            .max()
+            .unwrap();
+
         // PAGING
         static mut IDENT_MAP_PML3: PageTable = PageTable::new();
+        assert!(IDENT_MAP_PML3.iter().all(|entry| entry.is_unused()));
 
-        let size = 0x200000;
+        let size = 0x200000; // 2MiB
 
         for (index, entry) in IDENT_MAP_PML3.iter_mut().enumerate() {
             let addr = (size * index).try_into().unwrap();
+
+            if addr >= last_addr {
+                sprintln!(
+                    "Stopping identity mapping at PML3 index={:?}, addr=0x{:x?}, last_addr=0x{:x?}",
+                    index,
+                    addr,
+                    last_addr
+                );
+                break;
+            }
+
             entry.set_addr(
                 PhysAddr::new(addr),
                 PageTableFlags::PRESENT | PageTableFlags::WRITABLE | PageTableFlags::HUGE_PAGE,
