@@ -35,6 +35,8 @@ use crate::{
     result::{KernelException, Result as KernelResult},
 };
 
+const TWO_MIB: usize = 0x200000;
+
 struct Selectors {
     code_selector: Option<SegmentSelector>,
     tss_selector: Option<SegmentSelector>,
@@ -92,10 +94,8 @@ impl KernelStateObject {
         static mut IDENT_MAP_PML3: PageTable = PageTable::new();
         assert!(IDENT_MAP_PML3.iter().all(|entry| entry.is_unused()));
 
-        let size = 0x200000; // 2MiB
-
         for (index, entry) in IDENT_MAP_PML3.iter_mut().enumerate() {
-            let addr = (size * index).try_into().unwrap();
+            let addr = (TWO_MIB * index).try_into().unwrap();
 
             if addr >= last_addr {
                 sprintln!(
