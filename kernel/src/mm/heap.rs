@@ -1,8 +1,9 @@
+mod buddy;
+
 use {
     alloc::alloc::{GlobalAlloc, Layout},
     core::ptr::null_mut,
 };
-
 
 /// The virtual address of where the heap will be mapped.
 pub const HEAP_START: usize = 0x_4444_4444_0000;
@@ -11,19 +12,22 @@ pub const HEAP_START: usize = 0x_4444_4444_0000;
 pub const HEAP_STEP: usize = 4 * 1024; // 4 KiB
 
 #[global_allocator]
-static DUMMY: Dummy = Dummy {};
+static ALLOCATOR: buddy::Heap = buddy::Heap::new();
 
-pub struct Dummy;
+// #[global_allocator]
+// static DUMMY: Dummy = Dummy {};
 
-unsafe impl GlobalAlloc for Dummy {
-    unsafe fn alloc(&self, _layout: Layout) -> *mut u8 {
-        null_mut()
-    }
+// pub struct Dummy;
 
-    unsafe fn dealloc(&self, _ptr: *mut u8, _layout: Layout) {
-        panic!("dealloc should be never called")
-    }
-}
+// unsafe impl GlobalAlloc for Dummy {
+//     unsafe fn alloc(&self, _layout: Layout) -> *mut u8 {
+//         null_mut()
+//     }
+
+//     unsafe fn dealloc(&self, _ptr: *mut u8, _layout: Layout) {
+//         panic!("dealloc should be never called")
+//     }
+// }
 
 #[alloc_error_handler]
 pub fn alloc_error_handler(layout: alloc::alloc::Layout) -> ! {
