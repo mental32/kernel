@@ -1,4 +1,4 @@
-use core::mem::size_of;
+use core::{convert::TryInto, mem::size_of};
 
 use {
     bit_field::BitField,
@@ -31,6 +31,7 @@ use crate::{
         self,
         pics::{PICS, PIT},
     },
+    mm::PAGE_MAP_LEVEL_4,
     result::{KernelException, Result as KernelResult},
 };
 
@@ -80,32 +81,26 @@ impl KernelStateObject {
         }
 
         // PAGING
-        use crate::mm::PAGE_MAP_LEVEL_4;
+        static mut IDENT_MAP_PML3: PageTable = PageTable::new();
+
+        let size = 0x200000;
+
+        for (index, entry) in IDENT_MAP_PML3.iter_mut().enumerate() {
+            let addr = (size * index).try_into().unwrap();
+            entry.set_addr(
+                PhysAddr::new(addr),
+                PageTableFlags::PRESENT | PageTableFlags::WRITABLE | PageTableFlags::HUGE_PAGE,
+            );
+        }
 
         {
             let mut pml4 = PAGE_MAP_LEVEL_4.write();
             pml4.zero();
 
-            static mut PML3: PageTable = PageTable::new();
-
-            let mut base = 0x0;
-            let offset = 0x200000;
-
-            for entry in PML3.iter_mut() {
-                entry.set_addr(
-                    PhysAddr::new(base),
-                    PageTableFlags::PRESENT | PageTableFlags::WRITABLE | PageTableFlags::HUGE_PAGE,
-                );
-                base += offset;
-            }
-
-            for entry in pml4.iter_mut() {
-                entry.set_addr(
-                    PhysAddr::new(&PML3 as *const PageTable as u64),
-                    PageTableFlags::PRESENT | PageTableFlags::WRITABLE,
-                );
-                break;
-            }
+            pml4[0].set_addr(
+                PhysAddr::new(&IDENT_MAP_PML3 as *const PageTable as u64),
+                PageTableFlags::PRESENT | PageTableFlags::WRITABLE,
+            );
 
             let pml4_addr = &*pml4 as *const PageTable as u64;
             let phys_addr = PhysAddr::new(pml4_addr);
