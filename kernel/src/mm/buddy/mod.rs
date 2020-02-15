@@ -2,6 +2,8 @@ mod allocator;
 mod frame;
 mod linked_list;
 
+use core::mem::size_of;
+
 pub use {allocator::*, frame::*, linked_list::*};
 
 pub fn prev_power_of_two(num: usize) -> usize {

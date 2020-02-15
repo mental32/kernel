@@ -53,6 +53,11 @@ impl Heap {
         self.total += total;
     }
 
+    /// Add a range of memory [start, end) to the heap
+    pub unsafe fn init(&mut self, start: usize, size: usize) {
+        self.add_to_heap(start, start + size);
+    }
+
     /// Alloc a range of memory from the heap satifying `layout` requirements
     pub fn alloc(&mut self, layout: Layout) -> Result<NonNull<u8>, AllocErr> {
         let size = max(
