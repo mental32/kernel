@@ -34,7 +34,7 @@ unsafe impl GlobalAlloc for LockedHeap {
             .lock()
             .alloc(layout)
             .ok()
-            .map_or(0 as *mut u8, |allocation| allocation.as_ptr())
+            .map_or(null_mut(), |allocation| allocation.as_ptr())
     }
 
     unsafe fn dealloc(&self, ptr: *mut u8, layout: Layout) {
