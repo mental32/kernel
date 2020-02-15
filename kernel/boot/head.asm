@@ -47,7 +47,7 @@ _start:
 
     lgdt [gdt64.ptr]
 
-    jmp gdt64.code:_long_start
+    jmp gdt64.code:__start
 
 .cpuid:
     ; Check if CPUID is supported by attempting to flip the ID bit (bit 21)
@@ -161,7 +161,7 @@ bits 64
 
 extern kmain
 
-_long_start:
+__start:
     ; Empty all segment registers
     ; Most of them are ignored but the three that aren't shouldn't contain garbage
     xor ax, ax
