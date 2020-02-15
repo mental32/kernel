@@ -9,7 +9,7 @@ use core::{fmt, ptr};
 ///
 /// Thanks Sergio Benitez for his excellent work,
 /// See [CS140e](https://cs140e.sergio.bz/) for more information
-#[derive(Copy, Clone)]
+#[derive(Copy, Clone, Debug)]
 pub struct LinkedList {
     head: *mut usize,
 }
@@ -49,16 +49,16 @@ impl LinkedList {
     }
 
     /// Return an iterator over the items in the list
-    pub fn iter(&self) -> Iter {
-        Iter {
+    pub fn iter(&self) -> LinkedListIter {
+        LinkedListIter {
             curr: self.head,
             list: self,
         }
     }
 
     /// Return an mutable iterator over the items in the list
-    pub fn iter_mut(&mut self) -> IterMut {
-        IterMut {
+    pub fn iter_mut(&mut self) -> LikedListIterMut {
+        LikedListIterMut {
             prev: &mut self.head as *mut *mut usize as *mut usize,
             curr: self.head,
             list: self,
@@ -66,19 +66,13 @@ impl LinkedList {
     }
 }
 
-impl fmt::Debug for LinkedList {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        f.debug_list().entries(self.iter()).finish()
-    }
-}
-
 /// An iterator over the linked list
-pub struct Iter<'a> {
+pub struct LinkedListIter<'a> {
     curr: *mut usize,
     list: &'a LinkedList,
 }
 
-impl<'a> Iterator for Iter<'a> {
+impl<'a> Iterator for LinkedListIter<'a> {
     type Item = *mut usize;
 
     fn next(&mut self) -> Option<Self::Item> {
@@ -116,13 +110,13 @@ impl ListNode {
 }
 
 /// A mutable iterator over the linked list
-pub struct IterMut<'a> {
+pub struct LikedListIterMut<'a> {
     list: &'a mut LinkedList,
     prev: *mut usize,
     curr: *mut usize,
 }
 
-impl<'a> Iterator for IterMut<'a> {
+impl<'a> Iterator for LikedListIterMut<'a> {
     type Item = ListNode;
 
     fn next(&mut self) -> Option<Self::Item> {

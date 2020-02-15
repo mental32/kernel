@@ -2,27 +2,19 @@ use core::{
     cmp::{max, min},
     fmt,
     mem::size_of,
-    ops::Deref,
-    pts::NonNull,
+    ptr::NonNull,
 };
 
-#[rustversion::before(2020-02-02)]
-use alloc::alloc::Alloc;
-
-#[rustversion::since(2020-02-02)]
-use alloc::alloc::AllocRef as Alloc;
-
-use alloc::alloc::{AllocErr, GlobalAlloc, Layout};
+use alloc::alloc::{Alloc, AllocErr, GlobalAlloc, Layout};
 
 use spin::Mutex;
 
-use super::LinkedList;
+use super::{prev_power_of_two, LinkedList};
 
 /// A heap that uses buddy system with max order of 32.
+#[derive(Debug)]
 pub struct Heap {
     free_list: [LinkedList; 32],
-
-    // statistics
     user: usize,
     allocated: usize,
     total: usize,
@@ -145,16 +137,6 @@ impl Heap {
     }
 }
 
-impl fmt::Debug for Heap {
-    fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
-        fmt.debug_struct("Heap")
-            .field("user", &self.user)
-            .field("allocated", &self.allocated)
-            .field("total", &self.total)
-            .finish()
-    }
-}
-
 unsafe impl Alloc for Heap {
     unsafe fn alloc(&mut self, layout: Layout) -> Result<NonNull<u8>, AllocErr> {
         self.alloc(layout)
@@ -162,116 +144,5 @@ unsafe impl Alloc for Heap {
 
     unsafe fn dealloc(&mut self, ptr: NonNull<u8>, layout: Layout) {
         self.dealloc(ptr, layout)
-    }
-}
-
-/// A locked version of `Heap`
-///
-/// # Usage
-///
-/// Create a locked heap and add a memory region to it:
-/// ```
-/// use buddy_system_allocator::*;
-/// # use core::mem::size_of;
-/// let mut heap = LockedHeap::new();
-/// # let space: [usize; 100] = [0; 100];
-/// # let begin: usize = space.as_ptr() as usize;
-/// # let end: usize = begin + 100 * size_of::<usize>();
-/// # let size: usize = 100 * size_of::<usize>();
-/// unsafe {
-///     heap.lock().init(begin, size);
-///     // or
-///     heap.lock().add_to_heap(begin, end);
-/// }
-/// ```
-pub struct LockedHeap(Mutex<Heap>);
-
-impl LockedHeap {
-    /// Creates an empty heap
-    pub const fn new() -> LockedHeap {
-        LockedHeap(Mutex::new(Heap::new()))
-    }
-
-    /// Creates an empty heap
-    pub const fn empty() -> LockedHeap {
-        LockedHeap(Mutex::new(Heap::new()))
-    }
-}
-
-impl Deref for LockedHeap {
-    type Target = Mutex<Heap>;
-
-    fn deref(&self) -> &Mutex<Heap> {
-        &self.0
-    }
-}
-
-unsafe impl GlobalAlloc for LockedHeap {
-    unsafe fn alloc(&self, layout: Layout) -> *mut u8 {
-        self.0
-            .lock()
-            .alloc(layout)
-            .ok()
-            .map_or(0 as *mut u8, |allocation| allocation.as_ptr())
-    }
-
-    unsafe fn dealloc(&self, ptr: *mut u8, layout: Layout) {
-        self.0.lock().dealloc(NonNull::new_unchecked(ptr), layout)
-    }
-}
-
-/// A locked version of `Heap` with rescue before oom
-///
-/// # Usage
-///
-/// Create a locked heap:
-/// ```
-/// use buddy_system_allocator::*;
-/// let heap = LockedHeapWithRescue::new(|heap: &mut Heap| {});
-/// ```
-///
-/// Before oom, the allocator will try to call rescue function and try for one more time.
-pub struct LockedHeapWithRescue {
-    inner: Mutex<Heap>,
-    rescue: fn(&mut Heap),
-}
-
-impl LockedHeapWithRescue {
-    /// Creates an empty heap
-    pub const fn new(rescue: fn(&mut Heap)) -> LockedHeapWithRescue {
-        LockedHeapWithRescue {
-            inner: Mutex::new(Heap::new()),
-            rescue,
-        }
-    }
-}
-
-impl Deref for LockedHeapWithRescue {
-    type Target = Mutex<Heap>;
-
-    fn deref(&self) -> &Mutex<Heap> {
-        &self.inner
-    }
-}
-
-unsafe impl GlobalAlloc for LockedHeapWithRescue {
-    unsafe fn alloc(&self, layout: Layout) -> *mut u8 {
-        let mut inner = self.inner.lock();
-        match inner.alloc(layout) {
-            Ok(allocation) => allocation.as_ptr(),
-            Err(_) => {
-                (self.rescue)(&mut inner);
-                inner
-                    .alloc(layout)
-                    .ok()
-                    .map_or(0 as *mut u8, |allocation| allocation.as_ptr())
-            }
-        }
-    }
-
-    unsafe fn dealloc(&self, ptr: *mut u8, layout: Layout) {
-        self.inner
-            .lock()
-            .dealloc(NonNull::new_unchecked(ptr), layout)
     }
 }
