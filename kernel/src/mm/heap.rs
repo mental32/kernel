@@ -1,35 +1,43 @@
-mod buddy;
-
 use {
     alloc::alloc::{GlobalAlloc, Layout},
-    core::ptr::null_mut,
+    core::ops::Deref,
+    core::ptr::{null_mut, NonNull},
 };
+
+use spin::Mutex;
+
+use super::buddy::Heap as RawHeap;
 
 /// The virtual address of where the heap will be mapped.
 pub const HEAP_START: usize = 0x_4444_4444_0000;
 
-/// The amount of memory the heap will be grown by in typical cases.
-pub const HEAP_STEP: usize = 4 * 1024; // 4 KiB
+pub struct LockedHeap(Mutex<RawHeap>);
 
-#[global_allocator]
-static ALLOCATOR: buddy::Heap = buddy::Heap::new();
+impl LockedHeap {
+    /// Creates an empty heap
+    pub const fn new() -> LockedHeap {
+        LockedHeap(Mutex::new(RawHeap::new()))
+    }
+}
 
-// #[global_allocator]
-// static DUMMY: Dummy = Dummy {};
+impl Deref for LockedHeap {
+    type Target = Mutex<RawHeap>;
 
-// pub struct Dummy;
+    fn deref(&self) -> &Mutex<RawHeap> {
+        &self.0
+    }
+}
 
-// unsafe impl GlobalAlloc for Dummy {
-//     unsafe fn alloc(&self, _layout: Layout) -> *mut u8 {
-//         null_mut()
-//     }
+unsafe impl GlobalAlloc for LockedHeap {
+    unsafe fn alloc(&self, layout: Layout) -> *mut u8 {
+        self.0
+            .lock()
+            .alloc(layout)
+            .ok()
+            .map_or(0 as *mut u8, |allocation| allocation.as_ptr())
+    }
 
-//     unsafe fn dealloc(&self, _ptr: *mut u8, _layout: Layout) {
-//         panic!("dealloc should be never called")
-//     }
-// }
-
-#[alloc_error_handler]
-pub fn alloc_error_handler(layout: alloc::alloc::Layout) -> ! {
-    panic!("allocation error: {:?}", layout)
+    unsafe fn dealloc(&self, ptr: *mut u8, layout: Layout) {
+        self.0.lock().dealloc(NonNull::new_unchecked(ptr), layout)
+    }
 }
