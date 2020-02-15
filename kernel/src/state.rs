@@ -15,7 +15,9 @@ use {
             idt::{InterruptDescriptorTable, InterruptStackFrame, PageFaultErrorCode},
             paging::{
                 frame::PhysFrame,
+                page::{PageRangeInclusive, Size4KiB},
                 page_table::{PageTable, PageTableEntry, PageTableFlags},
+                Page,
             },
             tss::TaskStateSegment,
         },
@@ -31,11 +33,13 @@ use crate::{
         self,
         pics::{PICS, PIT},
     },
-    mm::PAGE_MAP_LEVEL_4,
+    mm::{LockedHeap, HEAP_START, PAGE_MAP_LEVEL_4},
     result::{KernelException, Result as KernelResult},
+    GLOBAL_ALLOCATOR,
 };
 
 const TWO_MIB: usize = 0x200000;
+const HEAP_SIZE: usize = 100 * 1024;
 
 struct Selectors {
     code_selector: Option<SegmentSelector>,
@@ -48,10 +52,12 @@ pub struct KernelStateObject {
     pic: Option<&'static Mutex<ChainedPics>>,
     pit: Option<&'static Mutex<ProgrammableIntervalTimer>>,
     // Structures
+    heap: Option<&'static LockedHeap>,
+    selectors: Selectors,
+    // Tables
     gdt: ExposedGlobalDescriptorTable,
     idt: InterruptDescriptorTable,
     tss: TaskStateSegment,
-    selectors: Selectors,
 }
 
 impl KernelStateObject {
@@ -66,21 +72,26 @@ impl KernelStateObject {
         };
 
         Self {
-            selectors,
             idt,
             tss,
             gdt,
+
+            selectors,
+            heap: None,
+
             pic: None,
             pit: None,
         }
     }
 
     pub unsafe fn prepare(&mut self, boot_info: &BootInformation) -> KernelResult<()> {
-        if self.pic.is_some() {
+        if self.heap.is_some() {
             return Err(KernelException::IllegalDoubleCall(
                 "Attempted to call KernelStateObject::prepare twice.",
             ));
         }
+
+        self.heap = Some(&GLOBAL_ALLOCATOR);
 
         let map = boot_info.memory_map_tag().unwrap();
         let last_addr = map
@@ -91,6 +102,8 @@ impl KernelStateObject {
             .unwrap();
 
         // PAGING
+
+        // Identity map all physical memory up to 2GiB
         static mut IDENT_MAP_PML3: PageTable = PageTable::new();
         assert!(IDENT_MAP_PML3.iter().all(|entry| entry.is_unused()));
 
@@ -113,33 +126,34 @@ impl KernelStateObject {
             );
         }
 
-        {
-            let mut pml4 = PAGE_MAP_LEVEL_4.write();
-            pml4.zero();
+        // Map the identity PML3 to the new PML4 and updated CR3
+        let mut pml4 = PAGE_MAP_LEVEL_4.write();
+        pml4.zero();
 
-            pml4[0].set_addr(
-                PhysAddr::new(&IDENT_MAP_PML3 as *const PageTable as u64),
-                PageTableFlags::PRESENT | PageTableFlags::WRITABLE,
-            );
+        pml4[0].set_addr(
+            PhysAddr::new(&IDENT_MAP_PML3 as *const PageTable as u64),
+            PageTableFlags::PRESENT | PageTableFlags::WRITABLE,
+        );
 
-            let pml4_addr = &*pml4 as *const PageTable as u64;
-            let phys_addr = PhysAddr::new(pml4_addr);
-            Cr3::write(PhysFrame::containing_address(phys_addr), Cr3Flags::empty());
+        let pml4_addr = &*pml4 as *const PageTable as u64;
+        let phys_addr = PhysAddr::new(pml4_addr);
+        Cr3::write(PhysFrame::containing_address(phys_addr), Cr3Flags::empty());
 
-            sprintln!("{:?}", pml4);
-        }
+        sprintln!("{:?}", pml4);
 
         // ALLOCATOR
+
+        // Heap page range
+        let page_range: PageRangeInclusive<Size4KiB> = {
+            let heap_start = VirtAddr::new(HEAP_START as u64);
+            let heap_end = heap_start + HEAP_SIZE - 1u64;
+            let heap_start_page = Page::containing_address(heap_start);
+            let heap_end_page = Page::containing_address(heap_end);
+            Page::range_inclusive(heap_start_page, heap_end_page)
+        };
+
         // let mapper: &mut dyn Mapper<Size4KiB> = None;
         // let frame_allocator: &mut dyn FrameAllocator<Size4KiB> = None;
-
-        // let page_range = {
-        //     let heap_start = VirtAddr::new(HEAP_START as u64);
-        //     let heap_end = heap_start + HEAP_SIZE - 1u64;
-        //     let heap_start_page = Page::containing_address(heap_start);
-        //     let heap_end_page = Page::containing_address(heap_end);
-        //     Page::range_inclusive(heap_start_page, heap_end_page)
-        // };
 
         // for page in page_range {
         //     let frame = frame_allocator
@@ -149,7 +163,7 @@ impl KernelStateObject {
         //     mapper.map_to(page, frame, flags, frame_allocator)?.flush();
         // }
 
-        // ALLOCATOR.lock().init(HEAP_START, HEAP_SIZE);
+        // GLOBAL_ALLOCATOR.lock().init(HEAP_START, HEAP_SIZE); // Statically size the heap to 100Kib
 
         // TSS
         self.tss.interrupt_stack_table[0] = {

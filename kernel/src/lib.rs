@@ -3,11 +3,13 @@
 #![feature(lang_items)]
 #![feature(abi_x86_interrupt)]
 #![feature(alloc_error_handler)]
+#![feature(allocator_api)]
+#![feature(const_fn)]
 
 //! A muggle blood kernel written in Rust, C and Haskell, with an embedded
 //! WASM runtime.
 
-#[cfg(not(any(target_arch = "x86_64")))]
+#[cfg(not(target_arch = "x86_64"))]
 compile_error!("This kernel only supports the (AMD) x86_64 architecture.");
 
 extern crate alloc;
@@ -16,9 +18,9 @@ mod gdt;
 mod isr;
 mod mm;
 mod result;
-mod sched;
+// mod sched;
 mod state;
-mod vfs;
+// mod vfs;
 
 use core::fmt::Write;
 
@@ -30,7 +32,7 @@ use {
 };
 
 use {
-    sched::RoundRobin,
+    mm::LockedHeap,
     state::KernelStateObject,
     vga::{vprint, DefaultBuffer, DefaultWriter},
 };
@@ -59,13 +61,19 @@ pub unsafe extern "C" fn kmain(multiboot_addr: usize) -> ! {
 
     interrupts::enable();
 
-    // let _executor = RoundRobin::new(&(*KERNEL_STATE_OBJECT));
-    // executor.spawn(vfs::launch).unwrap();
-    // executor.run_forever().unwrap();
-
     loop {
         hlt()
     }
+}
+
+/// Global allocator refrence.
+#[global_allocator]
+pub static GLOBAL_ALLOCATOR: LockedHeap = LockedHeap::new();
+
+/// Allocation error handler.
+#[alloc_error_handler]
+pub fn alloc_error_handler(layout: alloc::alloc::Layout) -> ! {
+    panic!("allocation error: {:?}", layout)
 }
 
 #[panic_handler]
