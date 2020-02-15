@@ -43,7 +43,7 @@ lazy_static! {
 #[inline]
 pub fn serial_println(port: &mut SerialPort, args: core::fmt::Arguments) {
     port.write_fmt(args).unwrap();
-    port.write_fmt(format_args!("\n"));
+    port.write_fmt(format_args!("\n")).unwrap();
 }
 
 /// Helper macros that deal with serial IO.
