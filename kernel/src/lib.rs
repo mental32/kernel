@@ -18,7 +18,6 @@ mod gdt;
 mod isr;
 mod mm;
 mod result;
-// mod sched;
 mod state;
 // mod vfs;
 
@@ -89,7 +88,7 @@ fn panic(info: &core::panic::PanicInfo) -> ! {
     }
 }
 
-/// OOM handler.
+/// Marks a function that is used for implementing stack unwinding.
 #[lang = "eh_personality"]
 #[no_mangle]
 pub extern "C" fn eh_personality() {}
