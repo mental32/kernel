@@ -22,7 +22,7 @@ pub struct Heap {
 
 impl Heap {
     /// Create an empty heap.
-    pub const fn new() -> Self {
+    pub const fn empty() -> Self {
         Heap {
             free_list: [LinkedList::new(); 32],
             user: 0,
