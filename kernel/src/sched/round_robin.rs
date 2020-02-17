@@ -1,3 +1,5 @@
+use alloc::VecDeque;
+
 use spin::Mutex;
 
 use {
@@ -9,14 +11,12 @@ use {
 };
 
 pub struct RoundRobin {
-    // threads: VecDeque<ThreadControlBlock>,
-    threads: [ThreadControlBlock; 2],
+    threads: VecDeque<ThreadControlBlock>,
 }
 
 impl RoundRobin {
     pub fn new(_state: &Mutex<KernelStateObject>) -> Self {
-        // let threads = VecDeque::new();
-        let threads = [ThreadControlBlock::new(0), ThreadControlBlock::new(1)];
+        let threads = VecDeque::new();
         Self { threads }
     }
 }
