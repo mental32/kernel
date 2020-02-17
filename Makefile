@@ -7,17 +7,18 @@ export kernel_blob := $(abspath ./build/kernel-$(arch).bin)
 GRUB_MKRESCUE = grub-mkrescue
 QEMU := qemu-system-$(arch)
 
-QEMU_MEM := 8M
-
 iso    := ./build/kernel-$(arch).iso
 grub_cfg := $(common)/grub.cfg
+
+QEMU_MEM := 8M
+QEMU_ARGS := -m $(QEMU_MEM) -vga std -serial stdio -net nic,model=e1000 -machine q35
 
 .PHONY: all kernel
 
 all: $(iso)
 
 qemu: all
-	$(QEMU) -drive format=raw,file=$(iso) -m $(QEMU_MEM) -serial stdio
+	$(QEMU) -drive format=raw,file=$(iso) $(QEMU_ARGS)
 
 $(iso): kernel $(grub_cfg)
 	mkdir -p ./build/isofiles/boot/grub

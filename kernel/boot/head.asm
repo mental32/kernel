@@ -19,7 +19,6 @@ align 4096
 PML4: resb 4096
 PDPT: resb 4096
 PDT:  resb 4096
-PT:   resb 4096
 
 stack_bottom:
     resb (4096 * 4) * 4 ; 32KiB Stack
@@ -48,7 +47,7 @@ _start:
 
     lgdt [gdt64.ptr]
 
-    jmp gdt64.code:_long_start
+    jmp gdt64.code:__start
 
 .cpuid:
     ; Check if CPUID is supported by attempting to flip the ID bit (bit 21)
@@ -110,7 +109,6 @@ _start:
     mov [PML4 + (8 * 511)], eax
     mov [PDPT + (8 * 511)], eax
     mov [PDT + (8 * 511)], eax
-    mov [PT + (8 * 511)], eax
 
     ; map first P3 entry to P2 table
     mov eax, PDT
@@ -119,26 +117,7 @@ _start:
 
     mov ecx, 0
 
-.paging.map.smol:
-
-    mov eax, 0x1000  ; 4KiB
-    mul ecx          ; start address of ecx-th page
-
-    or eax, 0b01 ; present + writable
-    mov [PT + ecx * 8], eax
-
-    inc ecx
-    cmp ecx, 511
-    jne .paging.map.smol
-
-    ; Map that page table to the PDT
-    mov eax, PT
-    or eax, 0b11 ; present + writable
-    mov [PDT], eax
-
-    mov ecx, 1
-
-.paging.map.huge:
+.paging.map.inner:
 
     mov eax, 0x200000  ; 2MiB
     mul ecx            ; start address of ecx-th page
@@ -148,7 +127,7 @@ _start:
 
     inc ecx
     cmp ecx, 511
-    jne .paging.map.huge
+    jne .paging.map.inner
 
 .paging.enable:
 
@@ -182,7 +161,7 @@ bits 64
 
 extern kmain
 
-_long_start:
+__start:
     ; Empty all segment registers
     ; Most of them are ignored but the three that aren't shouldn't contain garbage
     xor ax, ax

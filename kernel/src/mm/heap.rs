@@ -1,5 +1,5 @@
 use {
-    alloc::alloc::{GlobalAlloc, Layout},
+    alloc::alloc::{AllocRef, GlobalAlloc, Layout},
     core::ops::Deref,
     core::ptr::{null_mut, NonNull},
 };
@@ -7,6 +7,8 @@ use {
 use spin::Mutex;
 
 use super::buddy::Heap as RawHeap;
+// use super::bump::Heap as RawHeap;
+// use linked_list_allocator::Heap as RawHeap;
 
 /// The virtual address of where the heap will be mapped.
 pub const HEAP_START: usize = 0x_4444_4444_0000;
@@ -16,7 +18,7 @@ pub struct LockedHeap(Mutex<RawHeap>);
 impl LockedHeap {
     /// Creates an empty heap
     pub const fn new() -> LockedHeap {
-        LockedHeap(Mutex::new(RawHeap::new()))
+        LockedHeap(Mutex::new(RawHeap::empty()))
     }
 }
 
@@ -30,10 +32,13 @@ impl Deref for LockedHeap {
 
 unsafe impl GlobalAlloc for LockedHeap {
     unsafe fn alloc(&self, layout: Layout) -> *mut u8 {
-        self.0
-            .lock()
-            .alloc(layout)
-            .ok()
+        let res = self.0.lock().alloc(layout);
+
+        use serial::sprintln;
+
+        sprintln!("{:?}", res);
+
+        res.ok()
             .map_or(null_mut(), |allocation| allocation.as_ptr())
     }
 

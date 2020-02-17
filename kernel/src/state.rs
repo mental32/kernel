@@ -3,6 +3,7 @@ use core::{convert::TryInto, mem::size_of};
 use {
     bit_field::BitField,
     multiboot2::BootInformation,
+    smallvec::{smallvec, SmallVec},
     spin::{Mutex, RwLock},
     x86_64::{
         instructions::{
@@ -15,7 +16,7 @@ use {
             idt::{InterruptDescriptorTable, InterruptStackFrame, PageFaultErrorCode},
             paging::{
                 frame::PhysFrame,
-                page::{PageRangeInclusive, Size4KiB},
+                page::{PageRange, PageRangeInclusive, Size2MiB, Size4KiB},
                 page_table::{PageTable, PageTableEntry, PageTableFlags},
                 Page,
             },
@@ -93,6 +94,7 @@ impl KernelStateObject {
 
         self.heap = Some(&GLOBAL_ALLOCATOR);
 
+        // PAGING
         let map = boot_info.memory_map_tag().unwrap();
         let last_addr = map
             .memory_areas()
@@ -100,8 +102,6 @@ impl KernelStateObject {
             .map(|area| area.end_address())
             .max()
             .unwrap();
-
-        // PAGING
 
         // Identity map all physical memory up to 2GiB
         static mut IDENT_MAP_PML3: PageTable = PageTable::new();
@@ -132,7 +132,7 @@ impl KernelStateObject {
 
         pml4[0].set_addr(
             PhysAddr::new(&IDENT_MAP_PML3 as *const PageTable as u64),
-            PageTableFlags::PRESENT | PageTableFlags::WRITABLE,
+            PageTableFlags::PRESENT,
         );
 
         let pml4_addr = &*pml4 as *const PageTable as u64;
@@ -144,26 +144,115 @@ impl KernelStateObject {
         // ALLOCATOR
 
         // Heap page range
-        let page_range: PageRangeInclusive<Size4KiB> = {
-            let heap_start = VirtAddr::new(HEAP_START as u64);
-            let heap_end = heap_start + HEAP_SIZE - 1u64;
-            let heap_start_page = Page::containing_address(heap_start);
-            let heap_end_page = Page::containing_address(heap_end);
-            Page::range_inclusive(heap_start_page, heap_end_page)
+        fn page_range_exclusive(start: u64, stop: u64) -> PageRange {
+            let start = VirtAddr::new(start);
+            let end = VirtAddr::new(stop);
+            let start_page = Page::containing_address(start);
+            let end_page = Page::containing_address(end);
+            Page::range(start_page, end_page)
+        }
+
+        fn page_range_inclusive(start: u64, stop: u64) -> PageRangeInclusive {
+            let start = VirtAddr::new(start);
+            let end = VirtAddr::new(stop);
+            let start_page = Page::containing_address(start);
+            let end_page = Page::containing_address(end);
+            Page::range_inclusive(start_page, end_page)
+        }
+
+        let elf_tag = boot_info.elf_sections_tag().unwrap();
+
+        let section_page_ranges = {
+            let mut raw_section_page_ranges = elf_tag
+                .sections()
+                .map(|section| {
+                    Some(page_range_inclusive(
+                        section.start_address(),
+                        section.end_address() + section.size(),
+                    ))
+                })
+                .collect::<SmallVec<[Option<PageRangeInclusive>; 32]>>();
+
+            for index in (0..(raw_section_page_ranges.len() - 1)) {
+                if raw_section_page_ranges[index].is_none() {
+                    continue;
+                }
+
+                let left = raw_section_page_ranges[index].unwrap();
+                let right = raw_section_page_ranges[index + 1].unwrap();
+
+                if left.end == right.start {
+                    raw_section_page_ranges[index + 1] =
+                        Some(Page::range_inclusive(left.start, right.end));
+                    raw_section_page_ranges[index] = None;
+                }
+            }
+
+            sprintln!("{:?}", raw_section_page_ranges);
+
+            raw_section_page_ranges
+                .iter()
+                .filter(|range| range.is_some())
+                .map(|range| range.unwrap())
+                .map(|range| {
+                    (
+                        range.start.start_address().as_u64(),
+                        range.end.start_address().as_u64() + range.end.size(),
+                    )
+                })
+                .collect::<SmallVec<[(u64, u64); 32]>>()
         };
 
-        // let mapper: &mut dyn Mapper<Size4KiB> = None;
-        // let frame_allocator: &mut dyn FrameAllocator<Size4KiB> = None;
+        sprintln!("{:?}", section_page_ranges);
 
-        // for page in page_range {
-        //     let frame = frame_allocator
-        //         .allocate_frame()
-        //         .ok_or(MapToError::FrameAllocationFailed)?;
-        //     let flags = PageTableFlags::PRESENT | PageTableFlags::WRITABLE;
-        //     mapper.map_to(page, frame, flags, frame_allocator)?.flush();
-        // }
+        let heap_range = {
+            let mut heap_range = None;
 
-        // GLOBAL_ALLOCATOR.lock().init(HEAP_START, HEAP_SIZE); // Statically size the heap to 100Kib
+            // The memory_areas method name is a little deceptive.
+            //
+            // It'll only yield areas that are listed as available
+            // By the multiboot tag, not all areas that get listed.
+            for area in map.memory_areas() {
+                let area_start = area.start_address();
+                let area_end = area.end_address();
+                let area = page_range_exclusive(area_start, area_end);
+
+                if section_page_ranges
+                    .iter()
+                    .all(|(start, stop)| (area_start <= *stop) && (*start >= area_end))
+                {
+                    heap_range = Some(area);
+                }
+            }
+
+            match heap_range {
+                None => panic!("Not enough memory to allocate a heap!"),
+                Some(range) => range,
+            }
+        };
+
+        sprintln!("{:?}", heap_range);
+
+        let mut heap_start: usize = heap_range
+            .start
+            .start_address()
+            .as_u64()
+            .try_into()
+            .unwrap();
+
+        // When an allocation call returns 0x00 as a pointer
+        // It's treated as an allocation failure, even though
+        // In some cases an area starting at phys addr 0x00 is
+        // Possible.
+        if heap_start == 0 {
+            heap_start += 1;
+        }
+
+        let heap_end: usize = heap_range.end.start_address().as_u64().try_into().unwrap();
+
+        GLOBAL_ALLOCATOR
+            .lock()
+            .init(heap_start, heap_end - heap_start);
 
         // TSS
         self.tss.interrupt_stack_table[0] = {
