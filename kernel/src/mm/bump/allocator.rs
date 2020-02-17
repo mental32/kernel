@@ -1,12 +1,6 @@
-use core::{
-    cmp::{max, min},
-    fmt,
-    mem::size_of,
-    ptr,
-    ptr::NonNull,
-};
+use core::ptr::NonNull;
 
-use alloc::alloc::{Alloc, AllocErr, GlobalAlloc, Layout};
+use alloc::alloc::{Alloc, AllocErr, Layout};
 
 #[derive(Debug)]
 pub struct Heap {
@@ -63,7 +57,7 @@ unsafe impl Alloc for Heap {
         }
     }
 
-    unsafe fn dealloc(&mut self, ptr: NonNull<u8>, layout: Layout) {
+    unsafe fn dealloc(&mut self, _ptr: NonNull<u8>, _layout: Layout) {
         self.allocations -= 1;
         if self.allocations == 0 {
             self.next = self.heap_start;

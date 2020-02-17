@@ -1,29 +1,25 @@
 use core::{convert::TryInto, mem::size_of};
 
-use {
-    bit_field::BitField,
-    multiboot2::BootInformation,
-    smallvec::{smallvec, SmallVec},
-    spin::{Mutex, RwLock},
-    x86_64::{
-        instructions::{
-            segmentation::set_cs,
-            tables::{lidt, load_tss, DescriptorTablePointer},
-        },
-        registers::control::{Cr2, Cr3, Cr3Flags},
-        structures::{
-            gdt::{Descriptor, DescriptorFlags, SegmentSelector},
-            idt::{InterruptDescriptorTable, InterruptStackFrame, PageFaultErrorCode},
-            paging::{
-                frame::PhysFrame,
-                page::{PageRange, PageRangeInclusive, Size2MiB, Size4KiB},
-                page_table::{PageTable, PageTableEntry, PageTableFlags},
-                Page,
-            },
-            tss::TaskStateSegment,
-        },
-        PhysAddr, VirtAddr,
+use {bit_field::BitField, multiboot2::BootInformation, smallvec::SmallVec, spin::Mutex};
+
+use x86_64::{
+    instructions::{
+        segmentation::set_cs,
+        tables::{lidt, load_tss, DescriptorTablePointer},
     },
+    registers::control::{Cr3, Cr3Flags},
+    structures::{
+        gdt::{Descriptor, DescriptorFlags, SegmentSelector},
+        idt::InterruptDescriptorTable,
+        paging::{
+            frame::PhysFrame,
+            page::{PageRange, PageRangeInclusive},
+            page_table::{PageTable, PageTableFlags},
+            Page,
+        },
+        tss::TaskStateSegment,
+    },
+    PhysAddr, VirtAddr,
 };
 
 use {pic8259::ChainedPics, pit825x::ProgrammableIntervalTimer, serial::sprintln};
@@ -34,13 +30,12 @@ use crate::{
         self,
         pics::{PICS, PIT},
     },
-    mm::{LockedHeap, HEAP_START, PAGE_MAP_LEVEL_4},
+    mm::{LockedHeap, PAGE_MAP_LEVEL_4},
     result::{KernelException, Result as KernelResult},
     GLOBAL_ALLOCATOR,
 };
 
 const TWO_MIB: usize = 0x200000;
-const HEAP_SIZE: usize = 100 * 1024;
 
 struct Selectors {
     code_selector: Option<SegmentSelector>,
@@ -173,7 +168,7 @@ impl KernelStateObject {
                 })
                 .collect::<SmallVec<[Option<PageRangeInclusive>; 32]>>();
 
-            for index in (0..(raw_section_page_ranges.len() - 1)) {
+            for index in 0..(raw_section_page_ranges.len() - 1) {
                 if raw_section_page_ranges[index].is_none() {
                     continue;
                 }

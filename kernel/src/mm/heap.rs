@@ -10,9 +10,6 @@ use super::buddy::Heap as RawHeap;
 // use super::bump::Heap as RawHeap;
 // use linked_list_allocator::Heap as RawHeap;
 
-/// The virtual address of where the heap will be mapped.
-pub const HEAP_START: usize = 0x_4444_4444_0000;
-
 #[derive(Debug)]
 pub struct LockedHeap(Mutex<RawHeap>);
 

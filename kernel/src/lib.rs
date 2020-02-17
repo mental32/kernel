@@ -24,7 +24,6 @@ mod state;
 use core::fmt::Write;
 
 use {
-    lazy_static::lazy_static,
     multiboot2::load,
     spin::Mutex,
     x86_64::instructions::{hlt, interrupts},

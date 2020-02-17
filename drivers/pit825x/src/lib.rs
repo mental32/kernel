@@ -38,8 +38,6 @@
 use cpuio::Port;
 
 const CHAN_0_DATA: u16 = 0x40;
-const CHAN_1_DATA: u16 = 0x41;
-const CHAN_2_DATA: u16 = 0x42;
 const MDE_CMD_REG: u16 = 0x43;
 
 macro_rules! pt {
