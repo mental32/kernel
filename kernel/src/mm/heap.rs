@@ -6,8 +6,12 @@ use {
 
 use spin::Mutex;
 
+#[cfg(feature = "buddy-alloc")]
 use super::buddy::Heap as RawHeap;
-// use super::bump::Heap as RawHeap;
+
+#[cfg(feature = "bump-alloc")]
+use super::bump::Heap as RawHeap;
+
 // use linked_list_allocator::Heap as RawHeap;
 
 #[derive(Debug)]

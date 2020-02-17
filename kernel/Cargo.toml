@@ -27,5 +27,12 @@ pc-keyboard = "0.5.0"
 goblin = { version = "0.2.0", features = ["elf64", "elf32"], default-features = false }
 lazy_static = { version = "1.4.0", features = ["spin_no_std"] }
 
+[features]
+default = ["bump-alloc"]
+
+buddy-alloc = []
+linked-list-alloc = []
+bump-alloc = []
+
 [profile.dev]
 panic = "abort"
