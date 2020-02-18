@@ -1,9 +1,9 @@
-use super::Attribute;
+use crate::Attribute;
 
-/// A character that VGA MMIO will understand.
+/// A character that VGA Text mode frambuffers will understand.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 #[repr(C)]
-pub struct Char {
+pub struct RawChar {
     /// The ASCII encoded byte that will be rendered.
     pub data: u8,
 
@@ -11,7 +11,7 @@ pub struct Char {
     pub attr: Attribute,
 }
 
-impl Char {
+impl RawChar {
     /// Create a new character to render.
     ///
     /// # Examples

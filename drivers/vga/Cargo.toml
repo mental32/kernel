@@ -5,11 +5,7 @@ authors = ["mental <m3nta1@yahoo.com>"]
 edition = "2018"
 
 [dependencies]
-volatile = "0.2.6"
-spin = "0.5.2"
-x86_64 = "0.4.1"
 cpuio = "0.2.0"
-lazy_static = { version = "1.4.0", features = ["spin_no_std"] }
 
 [profile.dev]
 panic = "abort"

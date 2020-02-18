@@ -1,5 +1,5 @@
 use {
-    crate::{Attribute, Char, Color, VGABuffer, VGACursor},
+    crate::{Attribute, Color, RawChar, VGABuffer, VGACursor},
     core::fmt::{self, Write},
 };
 
@@ -52,7 +52,7 @@ impl<'a, T: VGABuffer> VGAWriter<'a, T> {
     }
 
     /// Fill the buffer with a single character.
-    pub fn print_fill_char(&mut self, ch: char) -> crate::Result<()> {
+    pub fn print_fill_char(&mut self, ch: char) -> Result<(), (usize, usize)> {
         self.cursor.x = 0;
         self.cursor.y = 0;
 
@@ -68,7 +68,7 @@ impl<'a, T: VGABuffer> VGAWriter<'a, T> {
     }
 
     /// Print a string.
-    pub fn print_str(&mut self, st: &str) -> crate::Result<()> {
+    pub fn print_str(&mut self, st: &str) -> Result<(), (usize, usize)> {
         for byte in st.bytes() {
             self.print_char(byte as char)?;
         }
@@ -77,7 +77,7 @@ impl<'a, T: VGABuffer> VGAWriter<'a, T> {
     }
 
     /// Print a single character byte.
-    pub fn print_char(&mut self, ch: char) -> crate::Result<()> {
+    pub fn print_char(&mut self, ch: char) -> Result<(), (usize, usize)> {
         use VGAStatus::*;
 
         if self.status == CSI {
@@ -123,7 +123,7 @@ impl<'a, T: VGABuffer> VGAWriter<'a, T> {
         Ok(())
     }
 
-    fn write(&mut self, ch: char) -> crate::Result<()> {
+    fn write(&mut self, ch: char) -> Result<(), (usize, usize)> {
         let mut col = self.cursor.x;
         let mut row = self.cursor.y;
 
@@ -151,7 +151,7 @@ impl<'a, T: VGABuffer> VGAWriter<'a, T> {
         Ok(())
     }
 
-    fn handle_csi(&mut self, ch: char) -> crate::Result<()> {
+    fn handle_csi(&mut self, ch: char) -> Result<(), (usize, usize)> {
         match ch {
             '0'..='9' => {}
 
@@ -167,7 +167,7 @@ impl<'a, T: VGABuffer> VGAWriter<'a, T> {
         Ok(())
     }
 
-    fn handle_control_seq(&mut self, ch: char) -> crate::Result<()> {
+    fn handle_control_seq(&mut self, ch: char) -> Result<(), (usize, usize)> {
         if ('A'..'G').contains(&ch) {
             match ch {
                 'A' => {
@@ -284,18 +284,18 @@ impl<'a, T: VGABuffer> VGAWriter<'a, T> {
     /// ```
     /// writer.set_byte(0, 0, 'A');  // Sets the top left character to "A"
     /// ```
-    fn set_byte(&mut self, x: usize, y: usize, byte: u8) -> crate::Result<()> {
+    fn set_byte(&mut self, x: usize, y: usize, byte: u8) -> Result<(), (usize, usize)> {
         self.buffer.write(
             x,
             y,
-            Char {
+            RawChar {
                 data: byte,
                 attr: self.attr,
             },
         )
     }
 
-    fn scroll(&mut self) -> crate::Result<()> {
+    fn scroll(&mut self) -> Result<(), (usize, usize)> {
         for row in 1..self.buffer.height() {
             for col in 0..self.buffer.width() {
                 assert!(row < self.buffer.height());
@@ -311,8 +311,8 @@ impl<'a, T: VGABuffer> VGAWriter<'a, T> {
         Ok(())
     }
 
-    fn clear_row(&mut self, row: usize) -> crate::Result<()> {
-        let blank = Char {
+    fn clear_row(&mut self, row: usize) -> Result<(), (usize, usize)> {
+        let blank = RawChar {
             data: b' ',
             attr: self.attr,
         };
