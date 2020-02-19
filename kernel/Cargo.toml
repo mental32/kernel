@@ -15,6 +15,7 @@ pit825x = { path = "../drivers/pit825x" }
 serial = { path = "../drivers/serial" }
 vga = { path = "../drivers/vga" }
 # Other deps
+volatile = "0.2.6"
 linked_list_allocator = "0.6.6"
 smallvec = "1.2.0"
 x86_64 = "0.9.2"
