@@ -8,6 +8,8 @@ pub(self) mod bump;
 
 pub(self) mod heap;
 
+pub mod boot_frame;
+
 pub use heap::LockedHeap;
 
 #[no_mangle]

@@ -25,12 +25,10 @@ use x86_64::{
 use {pic8259::ChainedPics, pit825x::ProgrammableIntervalTimer, serial::sprintln};
 
 use crate::{
+    dev::{pic8259::PICS, pit825x::PIT},
     gdt::ExposedGlobalDescriptorTable,
-    isr::{
-        self,
-        pics::{PICS, PIT},
-    },
-    mm::{LockedHeap, PAGE_MAP_LEVEL_4},
+    isr,
+    mm::{self, LockedHeap, PAGE_MAP_LEVEL_4},
     result::{KernelException, Result as KernelResult},
     GLOBAL_ALLOCATOR,
 };
@@ -42,11 +40,14 @@ struct Selectors {
     tss_selector: Option<SegmentSelector>,
 }
 
+use alloc::{boxed::Box, vec::Vec};
+
+trait Device {}
+
 /// A struct that journals the kernels state.
 pub struct KernelStateObject {
     // Hardware
-    pic: Option<&'static Mutex<ChainedPics>>,
-    pit: Option<&'static Mutex<ProgrammableIntervalTimer>>,
+    devices: Option<Vec<u8>>,
     // Structures
     heap: Option<&'static LockedHeap>,
     selectors: Selectors,
@@ -54,6 +55,26 @@ pub struct KernelStateObject {
     gdt: ExposedGlobalDescriptorTable,
     idt: InterruptDescriptorTable,
     tss: TaskStateSegment,
+}
+
+use acpi::{AcpiHandler, PhysicalMapping};
+use core::ptr::NonNull;
+
+impl AcpiHandler for KernelStateObject {
+    fn map_physical_region<T>(
+        &mut self,
+        physical_address: usize,
+        size: usize,
+    ) -> PhysicalMapping<T> {
+        PhysicalMapping {
+            physical_start: physical_address,
+            virtual_start: NonNull::new(physical_address as *mut T).unwrap(),
+            region_length: size_of::<T>(),
+            mapped_length: x86_64::align_up(size_of::<T>() as u64, 64) as usize,
+        }
+    }
+
+    fn unmap_physical_region<T>(&mut self, region: PhysicalMapping<T>) {}
 }
 
 impl KernelStateObject {
@@ -75,30 +96,14 @@ impl KernelStateObject {
             selectors,
             heap: None,
 
-            pic: None,
-            pit: None,
+            devices: None,
         }
     }
 
-    pub unsafe fn prepare(&mut self, boot_info: &BootInformation) -> KernelResult<()> {
-        if self.heap.is_some() {
-            return Err(KernelException::IllegalDoubleCall(
-                "Attempted to call KernelStateObject::prepare twice.",
-            ));
-        }
+    // Initialization related methods
 
-        self.heap = Some(&GLOBAL_ALLOCATOR);
-
-        // PAGING
-        let map = boot_info.memory_map_tag().unwrap();
-        let last_addr = map
-            .memory_areas()
-            .into_iter()
-            .map(|area| area.end_address())
-            .max()
-            .unwrap();
-
-        // Identity map all physical memory up to 2GiB
+    unsafe fn initial_pml3_map(&mut self, last_addr: u64) {
+        // Identity map all possible physical memory up to 2GiB
         static mut IDENT_MAP_PML3: PageTable = PageTable::new();
         assert!(IDENT_MAP_PML3.iter().all(|entry| entry.is_unused()));
 
@@ -133,128 +138,16 @@ impl KernelStateObject {
         let pml4_addr = &*pml4 as *const PageTable as u64;
         let phys_addr = PhysAddr::new(pml4_addr);
         Cr3::write(PhysFrame::containing_address(phys_addr), Cr3Flags::empty());
+    }
 
-        sprintln!("{:?}", pml4);
-
-        // ALLOCATOR
-
-        // Heap page range
-        fn page_range_exclusive(start: u64, stop: u64) -> PageRange {
-            let start = VirtAddr::new(start);
-            let end = VirtAddr::new(stop);
-            let start_page = Page::containing_address(start);
-            let end_page = Page::containing_address(end);
-            Page::range(start_page, end_page)
-        }
-
-        fn page_range_inclusive(start: u64, stop: u64) -> PageRangeInclusive {
-            let start = VirtAddr::new(start);
-            let end = VirtAddr::new(stop);
-            let start_page = Page::containing_address(start);
-            let end_page = Page::containing_address(end);
-            Page::range_inclusive(start_page, end_page)
-        }
-
-        let elf_tag = boot_info.elf_sections_tag().unwrap();
-
-        let section_page_ranges = {
-            let mut raw_section_page_ranges = elf_tag
-                .sections()
-                .map(|section| {
-                    Some(page_range_inclusive(
-                        section.start_address(),
-                        section.end_address() + section.size(),
-                    ))
-                })
-                .collect::<SmallVec<[Option<PageRangeInclusive>; 32]>>();
-
-            for index in 0..(raw_section_page_ranges.len() - 1) {
-                if raw_section_page_ranges[index].is_none() {
-                    continue;
-                }
-
-                let left = raw_section_page_ranges[index].unwrap();
-                let right = raw_section_page_ranges[index + 1].unwrap();
-
-                if left.end == right.start {
-                    raw_section_page_ranges[index + 1] =
-                        Some(Page::range_inclusive(left.start, right.end));
-                    raw_section_page_ranges[index] = None;
-                }
-            }
-
-            sprintln!("{:?}", raw_section_page_ranges);
-
-            raw_section_page_ranges
-                .iter()
-                .filter(|range| range.is_some())
-                .map(|range| range.unwrap())
-                .map(|range| {
-                    (
-                        range.start.start_address().as_u64(),
-                        range.end.start_address().as_u64() + range.end.size(),
-                    )
-                })
-                .collect::<SmallVec<[(u64, u64); 32]>>()
-        };
-
-        sprintln!("{:?}", section_page_ranges);
-
-        let heap_range = {
-            let mut heap_range = None;
-
-            // The memory_areas method name is a little deceptive.
-            //
-            // It'll only yield areas that are listed as available
-            // By the multiboot tag, not all areas that get listed.
-            for area in map.memory_areas() {
-                let area_start = area.start_address();
-                let area_end = area.end_address();
-                let area = page_range_exclusive(area_start, area_end);
-
-                if section_page_ranges
-                    .iter()
-                    .all(|(start, stop)| (area_start <= *stop) && (*start >= area_end))
-                {
-                    heap_range = Some(area);
-                }
-            }
-
-            match heap_range {
-                None => panic!("Not enough memory to allocate a heap!"),
-                Some(range) => range,
-            }
-        };
-
-        sprintln!("{:?}", heap_range);
-
-        let mut heap_start: usize = heap_range
-            .start
-            .start_address()
-            .as_u64()
-            .try_into()
-            .unwrap();
-
-        // When an allocation call returns 0x00 as a pointer
-        // It's treated as an allocation failure, even though
-        // In some cases an area starting at phys addr 0x00 is
-        // Possible.
-        if heap_start == 0 {
-            heap_start += 1;
-        }
-
-        let heap_end: usize = heap_range.end.start_address().as_u64().try_into().unwrap();
-
-        GLOBAL_ALLOCATOR
-            .lock()
-            .init(heap_start, heap_end - heap_start);
-
+    unsafe fn load_tables(&mut self) {
         // TSS
         self.tss.interrupt_stack_table[0] = {
             const STACK_SIZE: usize = 4096;
-            static mut STACK: [u8; STACK_SIZE] = [0; STACK_SIZE];
 
-            let stack_start = VirtAddr::from_ptr(&STACK);
+            let interrupt_stack = Box::into_raw(Box::new([0; STACK_SIZE]));
+
+            let stack_start = VirtAddr::from_ptr(interrupt_stack);
             let stack_end = stack_start + STACK_SIZE;
             stack_end
         };
@@ -294,20 +187,61 @@ impl KernelStateObject {
         // IDT
         isr::map_default_handlers(&mut self.idt);
         self.load_idt();
+    }
 
-        self.pic = Some(&(*PICS));
+    unsafe fn load_device_drivers(&mut self) {
+        sprintln!("{:?}", acpi::search_for_rsdp_bios(self));
+        // self.pic = Some(&(*PICS));
 
-        {
-            let mut handle = self.pic.unwrap().lock();
-            handle.initialize();
+        // {
+        //     let mut handle = self.pic.unwrap().lock();
+        //     handle.initialize();
+        // }
+
+        // self.pit = Some(&PIT);
+
+        // {
+        //     let mut handle = self.pit.unwrap().lock();
+        //     handle.set_frequency(100);
+        // }
+    }
+
+    pub unsafe fn prepare(&mut self, boot_info: &BootInformation) -> KernelResult<()> {
+        if self.heap.is_some() {
+            return Err(KernelException::IllegalDoubleCall(
+                "Attempted to call KernelStateObject::prepare twice.",
+            ));
         }
 
-        self.pit = Some(&(*PIT));
+        self.heap = Some(&GLOBAL_ALLOCATOR);
 
-        {
-            let mut handle = self.pit.unwrap().lock();
-            handle.set_frequency(1000);
-        }
+        let map = boot_info.memory_map_tag().unwrap();
+        let last_addr = map
+            .memory_areas()
+            .into_iter()
+            .map(|area| area.end_address())
+            .max()
+            .unwrap();
+
+        sprintln!("{:x?}", boot_info.framebuffer_tag().unwrap().address);
+
+        // PAGING
+        self.initial_pml3_map(last_addr);
+
+        // ALLOCATOR
+
+        let (heap_start, heap_end) = mm::boot_frame::find_non_overlapping(boot_info);
+
+        self.heap.unwrap().lock().init(
+            heap_start.try_into().unwrap(),
+            (heap_end - heap_start).try_into().unwrap(),
+        );
+
+        // Load tables
+        self.load_tables();
+
+        // Device drivers
+        self.load_device_drivers();
 
         Ok(())
     }

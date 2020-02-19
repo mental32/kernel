@@ -14,6 +14,7 @@ compile_error!("This kernel only supports the (AMD) x86_64 architecture.");
 
 extern crate alloc;
 
+mod dev;
 mod gdt;
 mod isr;
 mod mm;
@@ -29,11 +30,9 @@ use {
     x86_64::instructions::{hlt, interrupts},
 };
 
-use {
-    mm::LockedHeap,
-    state::KernelStateObject,
-    vga::{vprint, DefaultBuffer, DefaultWriter},
-};
+use serial::sprintln;
+
+use {mm::LockedHeap, state::KernelStateObject};
 
 pub(crate) static KERNEL_STATE_OBJECT: Mutex<KernelStateObject> =
     Mutex::new(KernelStateObject::new());
@@ -42,8 +41,6 @@ pub(crate) static KERNEL_STATE_OBJECT: Mutex<KernelStateObject> =
 #[no_mangle]
 pub unsafe extern "C" fn kmain(multiboot_addr: usize) -> ! {
     let boot_info = load(multiboot_addr);
-
-    vprint!("{:?}", &boot_info);
 
     // Setting everything up for regular work.
     // The call to ``KernelStateObject::prepare`` will:
@@ -57,7 +54,7 @@ pub unsafe extern "C" fn kmain(multiboot_addr: usize) -> ! {
         state.prepare(&boot_info).unwrap();
     }
 
-    interrupts::enable();
+    // interrupts::enable();
 
     loop {
         hlt()
@@ -78,9 +75,7 @@ pub fn alloc_error_handler(layout: alloc::alloc::Layout) -> ! {
 fn panic(info: &core::panic::PanicInfo) -> ! {
     interrupts::disable();
 
-    let mut writer = DefaultWriter::new(DefaultBuffer::refrence());
-    writer.print_fill_char(' ').unwrap();
-    vprint!(writer, "{}", info);
+    sprintln!("{:?}", info);
 
     loop {
         hlt()
