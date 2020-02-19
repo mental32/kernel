@@ -60,6 +60,11 @@ impl ProgrammableIntervalTimer {
         pt!(0x80).write(0x00);
     }
 
+    /// Construct a new PIT.
+    pub const fn new(freq: usize) -> Self {
+        Self { freq }
+    }
+
     /// Get the frequency of the PIT.
     pub fn freq(&self) -> usize {
         self.freq
