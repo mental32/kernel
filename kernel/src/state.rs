@@ -27,8 +27,7 @@ use x86_64::{
 use {pic8259::ChainedPics, pit825x::ProgrammableIntervalTimer, serial::sprintln};
 
 use crate::{
-    // dev::{pic8259::PICS, pit825x::PIT},
-    dev::vga::VGAFramebuffer,
+    dev::{pic::CHIP_8259, vga::VGAFramebuffer},
     gdt::ExposedGlobalDescriptorTable,
     isr,
     mm::{self, LockedHeap, PAGE_MAP_LEVEL_4},
@@ -212,16 +211,12 @@ impl KernelStateObject {
             .max()
             .unwrap();
 
-        sprintln!("{:x?}", boot_info.framebuffer_tag().unwrap().address);
-
         // PAGING
         self.initial_pml3_map(last_addr);
 
         // ALLOCATOR
         let (heap_start, heap_end) =
-            mm::boot_frame::find_first_non_overlapping_free_area(0x1000 * 100, boot_info);
-
-        sprintln!("{:?} -> {:?}", heap_start, heap_end);
+            mm::boot_frame::find_first_non_overlapping_free_area(0x400 * 100, boot_info);
 
         self.heap.unwrap().lock().init(
             heap_start.try_into().unwrap(),
