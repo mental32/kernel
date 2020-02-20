@@ -60,8 +60,6 @@ mod controller_interrupt_handlers {
     use super::*;
 
     pub extern "x86-interrupt" fn timer_interrupt_handler(_stack_frame: &mut InterruptStackFrame) {
-        sprintln!("Tick...");
-
         eoi!(
             DEFAULT_PIC_SLAVE_OFFSET,
             CHIP_8259.pic.lock(),

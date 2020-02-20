@@ -34,13 +34,10 @@ impl Deref for LockedHeap {
 
 unsafe impl GlobalAlloc for LockedHeap {
     unsafe fn alloc(&self, layout: Layout) -> *mut u8 {
-        let res = self.0.lock().alloc(layout);
-
-        use serial::sprintln;
-
-        sprintln!("{:?}", res);
-
-        res.ok()
+        self.0
+            .lock()
+            .alloc(layout)
+            .ok()
             .map_or(null_mut(), |allocation| allocation.as_ptr())
     }
 
