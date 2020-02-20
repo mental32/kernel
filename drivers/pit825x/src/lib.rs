@@ -51,7 +51,8 @@ pub const PIT_OSC_FREQ: usize = 1193180;
 
 /// A PIT struct.
 pub struct ProgrammableIntervalTimer {
-    freq: usize,
+    /// The frequency (in hertz) that the PIT should interrupt at.
+    pub freq: usize,
 }
 
 impl ProgrammableIntervalTimer {
@@ -65,14 +66,9 @@ impl ProgrammableIntervalTimer {
         Self { freq }
     }
 
-    /// Get the frequency of the PIT.
-    pub fn freq(&self) -> usize {
-        self.freq
-    }
-
-    /// Modify the PITs frequency to a set value.
-    pub fn set_frequency(&mut self, freq: usize) {
-        let divisor = PIT_OSC_FREQ / freq;
+    /// Reconfigure the PIT with our frequency.
+    pub fn reconfigure(&mut self) {
+        let divisor = PIT_OSC_FREQ / self.freq;
 
         // 0x36 is the command byte.
         pt!(MDE_CMD_REG).write(0x36);
@@ -88,8 +84,6 @@ impl ProgrammableIntervalTimer {
         self.io_wait();
         chan_0_data.write(h);
         self.io_wait();
-
-        self.freq = freq;
     }
 
     /// Estimate the end time from a base uptime after some milis.
