@@ -1,5 +1,7 @@
 use core::{convert::TryInto, mem::size_of};
 
+use alloc::boxed::Box;
+
 use {bit_field::BitField, multiboot2::BootInformation, smallvec::SmallVec, spin::Mutex};
 
 use x86_64::{
@@ -10,7 +12,7 @@ use x86_64::{
     registers::control::{Cr3, Cr3Flags},
     structures::{
         gdt::{Descriptor, DescriptorFlags, SegmentSelector},
-        idt::InterruptDescriptorTable,
+        idt::{HandlerFunc, InterruptDescriptorTable},
         paging::{
             frame::PhysFrame,
             page::{PageRange, PageRangeInclusive},
@@ -25,7 +27,8 @@ use x86_64::{
 use {pic8259::ChainedPics, pit825x::ProgrammableIntervalTimer, serial::sprintln};
 
 use crate::{
-    dev::{pic8259::PICS, pit825x::PIT},
+    // dev::{pic8259::PICS, pit825x::PIT},
+    dev::vga::VGAFramebuffer,
     gdt::ExposedGlobalDescriptorTable,
     isr,
     mm::{self, LockedHeap, PAGE_MAP_LEVEL_4},
@@ -40,14 +43,10 @@ struct Selectors {
     tss_selector: Option<SegmentSelector>,
 }
 
-use alloc::{boxed::Box, vec::Vec};
-
-trait Device {}
-
 /// A struct that journals the kernels state.
 pub struct KernelStateObject {
     // Hardware
-    devices: Option<Vec<u8>>,
+    devices: Option<()>,
     // Structures
     heap: Option<&'static LockedHeap>,
     selectors: Selectors,
@@ -170,20 +169,9 @@ impl KernelStateObject {
     }
 
     unsafe fn load_device_drivers(&mut self) {
-        sprintln!("{:?}", acpi::search_for_rsdp_bios(self));
-        // self.pic = Some(&(*PICS));
+        //
 
-        // {
-        //     let mut handle = self.pic.unwrap().lock();
-        //     handle.initialize();
-        // }
-
-        // self.pit = Some(&PIT);
-
-        // {
-        //     let mut handle = self.pit.unwrap().lock();
-        //     handle.set_frequency(100);
-        // }
+        // ACPI
     }
 
     pub unsafe fn prepare(&mut self, boot_info: &BootInformation) -> KernelResult<()> {
@@ -209,8 +197,10 @@ impl KernelStateObject {
         self.initial_pml3_map(last_addr);
 
         // ALLOCATOR
+        let (heap_start, heap_end) =
+            mm::boot_frame::find_first_non_overlapping_free_area(0x1000 * 100, boot_info);
 
-        let (heap_start, heap_end) = mm::boot_frame::find_non_overlapping(boot_info);
+        sprintln!("{:?} -> {:?}", heap_start, heap_end);
 
         self.heap.unwrap().lock().init(
             heap_start.try_into().unwrap(),
@@ -223,7 +213,13 @@ impl KernelStateObject {
         // Device drivers
         self.load_device_drivers();
 
+        crate::dev::pic::CHIP_8259.init(self);
+
         Ok(())
+    }
+
+    pub unsafe fn set_idt_entry(&mut self, index: u8, handler: HandlerFunc) {
+        self.idt[index as usize].set_handler_fn(handler);
     }
 
     pub unsafe fn load_idt(&mut self) {
