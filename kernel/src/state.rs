@@ -56,6 +56,26 @@ pub struct KernelStateObject {
     tss: TaskStateSegment,
 }
 
+use acpi::{AcpiHandler, PhysicalMapping};
+use core::ptr::NonNull;
+
+impl AcpiHandler for KernelStateObject {
+    fn map_physical_region<T>(
+        &mut self,
+        physical_address: usize,
+        size: usize,
+    ) -> PhysicalMapping<T> {
+        PhysicalMapping {
+            physical_start: physical_address,
+            virtual_start: NonNull::new(physical_address as *mut T).unwrap(),
+            region_length: size_of::<T>(),
+            mapped_length: size_of::<T>(),
+        }
+    }
+
+    fn unmap_physical_region<T>(&mut self, region: PhysicalMapping<T>) {}
+}
+
 impl KernelStateObject {
     pub const fn new() -> Self {
         let idt = InterruptDescriptorTable::new();
@@ -169,9 +189,10 @@ impl KernelStateObject {
     }
 
     unsafe fn load_device_drivers(&mut self) {
-        //
-
         // ACPI
+        use acpi::search_for_rsdp_bios;
+
+        sprintln!("{:#?}", search_for_rsdp_bios(self));
     }
 
     pub unsafe fn prepare(&mut self, boot_info: &BootInformation) -> KernelResult<()> {
