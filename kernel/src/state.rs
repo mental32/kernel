@@ -229,7 +229,7 @@ impl KernelStateObject {
         // Device drivers
         self.load_device_drivers();
 
-        crate::dev::pic::CHIP_8259.init(self);
+        CHIP_8259.setup(self);
 
         Ok(())
     }

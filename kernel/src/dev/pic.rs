@@ -35,7 +35,7 @@ impl Chip8259 {
         }
     }
 
-    pub unsafe fn init(&self, kernel: &mut KernelStateObject) {
+    pub unsafe fn setup(&self, kernel: &mut KernelStateObject) {
         use controller_interrupt_handlers::*;
 
         kernel.set_idt_entry(
