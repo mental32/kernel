@@ -1,6 +1,6 @@
 use {
     crate::{Attribute, Color, RawChar, VGABuffer, VGACursor},
-    core::fmt::{self, Write},
+    core::fmt::{self, Debug, Write},
 };
 
 #[derive(Debug, PartialEq)]
@@ -11,7 +11,7 @@ enum VGAStatus {
 }
 
 /// Struct responsible for writing data into the VGA address space.
-pub struct VGAWriter<'a, T: VGABuffer> {
+pub struct VGAWriter<'a, T: VGABuffer + Debug> {
     /// The VGA cursor that gets used.
     pub cursor: VGACursor,
 
@@ -21,14 +21,14 @@ pub struct VGAWriter<'a, T: VGABuffer> {
     status: VGAStatus,
 }
 
-impl<'a, T: VGABuffer> Write for VGAWriter<'a, T> {
+impl<'a, T: VGABuffer + Debug> Write for VGAWriter<'a, T> {
     fn write_str(&mut self, st: &str) -> fmt::Result {
         self.print_str(st).unwrap();
         Ok(())
     }
 }
 
-impl<'a, T: VGABuffer> VGAWriter<'a, T> {
+impl<'a, T: VGABuffer + Debug> VGAWriter<'a, T> {
     /// Create a new writer that operates over a fixed sized
     /// arena of video memory.
     pub fn new(buffer: &'a mut T) -> Self {
