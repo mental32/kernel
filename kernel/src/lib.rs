@@ -37,6 +37,15 @@ use {mm::LockedHeap, state::KernelStateObject};
 pub(crate) static KERNEL_STATE_OBJECT: Mutex<KernelStateObject> =
     Mutex::new(KernelStateObject::new());
 
+/// Helper macro to refrence the kernel state object.
+#[macro_use]
+#[macro_export]
+macro_rules! kernel {
+    () => {
+        $crate::KERNEL_STATE_OBJECT
+    };
+}
+
 /// Kernel main start point.
 #[no_mangle]
 pub unsafe extern "C" fn kmain(multiboot_addr: usize) -> ! {
@@ -50,7 +59,7 @@ pub unsafe extern "C" fn kmain(multiboot_addr: usize) -> ! {
     //  - Resize, remap or modify current [kernel] pages and setup a heap.
 
     {
-        let mut state = KERNEL_STATE_OBJECT.lock();
+        let mut state = kernel!().lock();
         state.prepare(&boot_info).unwrap();
     }
 
