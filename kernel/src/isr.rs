@@ -3,14 +3,14 @@
 use x86_64::structures::idt::InterruptDescriptorTable;
 
 pub fn map_default_handlers(idt: &mut InterruptDescriptorTable) {
-    use handlers::*;
+    use cpu_reserved_routines::*;
 
     idt.breakpoint.set_handler_fn(breakpoint_handler);
     idt.double_fault.set_handler_fn(double_fault_handler);
     idt.page_fault.set_handler_fn(page_fault_handler);
 }
 
-mod handlers {
+mod cpu_reserved_routines {
     use x86_64::{
         registers::control::Cr2,
         structures::idt::{InterruptStackFrame, PageFaultErrorCode},
