@@ -57,26 +57,6 @@ pub struct KernelStateObject {
     tss: TaskStateSegment,
 }
 
-use acpi::{AcpiHandler, PhysicalMapping};
-use core::ptr::NonNull;
-
-impl AcpiHandler for KernelStateObject {
-    fn map_physical_region<T>(
-        &mut self,
-        physical_address: usize,
-        size: usize,
-    ) -> PhysicalMapping<T> {
-        PhysicalMapping {
-            physical_start: physical_address,
-            virtual_start: NonNull::new(physical_address as *mut T).unwrap(),
-            region_length: size_of::<T>(),
-            mapped_length: x86_64::align_up(size_of::<T>() as u64, 64) as usize,
-        }
-    }
-
-    fn unmap_physical_region<T>(&mut self, region: PhysicalMapping<T>) {}
-}
-
 impl KernelStateObject {
     pub const fn new() -> Self {
         let idt = InterruptDescriptorTable::new();

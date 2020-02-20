@@ -9,7 +9,6 @@ crate-type = ["staticlib"]
 
 [dependencies]
 # Local deps
-# acpi = { path = "../drivers/acpi" }
 pic8259 = { path = "../drivers/pic8259" }
 pit825x = { path = "../drivers/pit825x" }
 serial = { path = "../drivers/serial" }
