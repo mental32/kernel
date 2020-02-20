@@ -19,8 +19,9 @@ mod gdt;
 mod isr;
 mod mm;
 mod result;
+mod sched;
 mod state;
-// mod vfs;
+mod vfs;
 
 use core::fmt::Write;
 
@@ -63,7 +64,7 @@ pub unsafe extern "C" fn kmain(multiboot_addr: usize) -> ! {
         state.prepare(&boot_info).unwrap();
     }
 
-    // interrupts::enable();
+    interrupts::enable();
 
     loop {
         hlt()
