@@ -28,7 +28,7 @@ impl Heap {
 
 unsafe impl Alloc for Heap {
     unsafe fn alloc(&mut self, layout: Layout) -> Result<NonNull<u8>, AllocErr> {
-        let mut head = &mut self.head;
+        let head = &mut self.head;
 
         if let Ok(addr) = head.alloc(layout) {
             return Ok(addr);
@@ -36,7 +36,7 @@ unsafe impl Alloc for Heap {
 
         let mut neighbour = head.neighbour.as_mut();
         for _ in (0..(self.count)) {
-            let mut arena = match neighbour {
+            let arena = match neighbour {
                 None => break,
                 v => v.unwrap(),
             };
@@ -55,7 +55,7 @@ unsafe impl Alloc for Heap {
     }
 
     unsafe fn dealloc(&mut self, ptr: NonNull<u8>, layout: Layout) {
-        let mut head = &mut self.head;
+        let head = &mut self.head;
 
         if head.contains(ptr.as_ptr() as usize) {
             head.dealloc(ptr, layout);
@@ -63,8 +63,8 @@ unsafe impl Alloc for Heap {
         }
 
         let mut neighbour = head.neighbour.as_mut();
-        for _ in (0..(self.count)) {
-            let mut arena = match neighbour {
+        for _ in 0..(self.count) {
+            let arena = match neighbour {
                 None => break,
                 v => v.unwrap(),
             };
