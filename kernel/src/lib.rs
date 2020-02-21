@@ -47,6 +47,14 @@ macro_rules! kernel {
     };
 }
 
+/// A macro used to quicky construct handles to ports.
+#[macro_use]
+#[macro_export]
+macro_rules! pt {
+    ($ln:expr) => { Port::<u8>::new($ln) };
+    ($ln:expr, $size:ty) => { Port::<$size>::($ln) }
+}
+
 /// Kernel main start point.
 #[no_mangle]
 pub unsafe extern "C" fn kmain(multiboot_addr: usize) -> ! {
