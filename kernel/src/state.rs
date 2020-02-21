@@ -31,7 +31,7 @@ use crate::{
     gdt::ExposedGlobalDescriptorTable,
     isr,
     mm::{self, LockedHeap, PAGE_MAP_LEVEL_4},
-    result::{KernelException, Result as KernelResult},
+    result::{KernelException, KernelResult},
     GLOBAL_ALLOCATOR,
 };
 
