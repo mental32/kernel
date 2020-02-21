@@ -27,7 +27,7 @@ use x86_64::{
 use {pic8259::ChainedPics, pit825x::ProgrammableIntervalTimer, serial::sprintln};
 
 use crate::{
-    dev::{pic::CHIP_8259, vga::VGAFramebuffer},
+    dev::{apic, pic::CHIP_8259, vga::VGAFramebuffer},
     gdt::ExposedGlobalDescriptorTable,
     isr,
     mm::{self, LockedHeap, PAGE_MAP_LEVEL_4},
@@ -189,9 +189,49 @@ impl KernelStateObject {
 
     unsafe fn load_device_drivers(&mut self) {
         // ACPI
-        use acpi::search_for_rsdp_bios;
+        use acpi::{search_for_rsdp_bios, AcpiError};
 
-        sprintln!("{:#?}", search_for_rsdp_bios(self));
+        let maybe_acpi = {
+            let acpi = match search_for_rsdp_bios(self) {
+                Ok(acpi) => Some(acpi),
+                Err(acpi_error) => match acpi_error {
+                    AcpiError::NoValidRsdp => None,
+                    err => panic!("{:?}", err),
+                },
+            };
+
+            acpi
+        };
+
+        let apic_supported = apic::is_apic_supported();
+        let mut legacy_pics_supported = true;
+
+        if let Some(acpi) = maybe_acpi {
+            // APIC/LAPIC initialization and setup
+            if apic_supported {
+                sprintln!("APIC support detected, proceeding to remap and mask PIT8259");
+
+                if let Ok((apic, lapic_eoi_ptr)) = apic::initialize(&acpi) {
+                    if apic.also_has_legacy_pics {
+                        CHIP_8259.remap(0xA0, 0xA8);
+                        CHIP_8259.mask_all();
+                    } else {
+                        legacy_pics_supported = false;
+                    }
+
+                    sprintln!("Finished initializing the APIC.");
+                }
+            } else {
+                sprintln!("NO APIC support detected!");
+            }
+
+            // AML interpreter instance
+            // TODO: Finish wrapping lai (https://github.com/mental32/lai-rs)
+        }
+
+        if legacy_pics_supported {
+            CHIP_8259.setup(self);
+        }
     }
 
     pub unsafe fn prepare(&mut self, boot_info: &BootInformation) -> KernelResult<()> {
@@ -228,8 +268,6 @@ impl KernelStateObject {
 
         // Device drivers
         self.load_device_drivers();
-
-        CHIP_8259.setup(self);
 
         Ok(())
     }

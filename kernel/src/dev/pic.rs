@@ -11,13 +11,13 @@ use {
     serial::sprintln,
 };
 
-use crate::state::KernelStateObject;
+use crate::{pt, state::KernelStateObject};
 
 /// IRQ offset for the slave pic.
-const DEFAULT_PIC_SLAVE_OFFSET: u8 = 32;
+pub const DEFAULT_PIC_SLAVE_OFFSET: u8 = 32;
 
 /// IRQ offset for the master pic.
-const DEFAULT_PIC_MASTER_OFFSET: u8 = DEFAULT_PIC_SLAVE_OFFSET + 8;
+pub const DEFAULT_PIC_MASTER_OFFSET: u8 = DEFAULT_PIC_SLAVE_OFFSET + 8;
 
 pub static CHIP_8259: Chip8259 =
     Chip8259::new(0x1000, DEFAULT_PIC_SLAVE_OFFSET, DEFAULT_PIC_MASTER_OFFSET);
@@ -33,6 +33,16 @@ impl Chip8259 {
             pit: Mutex::new(ProgrammableIntervalTimer::new(pit_freq)),
             pic: Mutex::new(unsafe { ChainedPics::new(slave, master) }),
         }
+    }
+
+    pub unsafe fn remap(&self, slave: u8, master: u8) {
+        let mut handle = self.pic.lock();
+        *handle = unsafe { ChainedPics::new(slave, master) }
+    }
+
+    pub unsafe fn mask_all(&self) {
+        pt!(0xA1).write(0xFF);
+        pt!(0x21).write(0xFF);
     }
 
     pub unsafe fn setup(&self, kernel: &mut KernelStateObject) {
