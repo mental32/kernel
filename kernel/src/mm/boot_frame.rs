@@ -1,5 +1,7 @@
 //! Raw Boot info frame allocator.
 
+use core::cmp::{max, min};
+
 use {multiboot2::BootInformation, smallvec::SmallVec};
 
 use x86_64::{
@@ -81,59 +83,79 @@ pub fn elf_areas(boot_info: &BootInformation) -> SmallVec<[(u64, u64); 16]> {
         .collect::<SmallVec<[(u64, u64); 16]>>()
 }
 
-pub fn find_first_non_overlapping_free_area(
-    size: usize,
+pub fn find_holes(
+    hole_size: usize,
     boot_info: &BootInformation,
-) -> (u64, u64) {
-    // Heap page range
-    let section_page_ranges = elf_areas(boot_info);
+) -> impl Iterator<Item = PageRange> {
+    let memory_areas = boot_info
+        .memory_map_tag()
+        .unwrap()
+        .memory_areas()
+        .map(|area| (area.start_address(), area.end_address()))
+        .collect::<SmallVec<[(u64, u64); 32]>>();
 
-    let memory_map = boot_info.memory_map_tag().unwrap();
-    let heap_range = {
-        let mut heap_range = None;
-
-        // The memory_areas method name is a little deceptive.
-        //
-        // It'll only yield areas that are listed as available
-        // By the multiboot tag, not all areas that get listed.
-        for area in memory_map.memory_areas() {
-            let area_start: usize = area.start_address() as usize;
-            let area_end: usize = area.end_address() as usize;
-
-            for section_start in (area_start..area_end).step_by(size) {
-                let section_end = section_start + size;
-                let section = page_range_exclusive(section_start as u64, section_end as u64);
-
-                if section_page_ranges.iter().all(|(start, stop)| {
-                    ((section_start as u64) <= *stop) && (*start >= (section_end as u64))
-                }) {
-                    heap_range = Some(section);
-                    break;
-                }
-            }
-
-            if heap_range.is_some() {
-                break;
-            }
-        }
-
-        match heap_range {
-            None => panic!("Not enough memory to allocate a heap!"),
-            Some(range) => range,
-        }
-    };
-
-    let mut heap_start = heap_range.start.start_address().as_u64();
-
-    // When an allocation call returns 0x00 as a pointer
-    // It's treated as an allocation failure, even though
-    // In some cases an area starting at addr 0x00 is
-    // Possible.
-    if heap_start == 0 {
-        heap_start += 8; // 8 byte alignment
+    PhysFrameIter {
+        elf_areas: elf_areas(boot_info),
+        hole_size,
+        memory_areas,
+        area_index: 0,
+        section_index: 0,
     }
+}
 
-    let heap_end = heap_range.end.start_address().as_u64();
+#[derive(Debug)]
+pub struct PhysFrameIter {
+    hole_size: usize,
+    area_index: usize,
+    section_index: usize,
+    memory_areas: SmallVec<[(u64, u64); 32]>,
+    elf_areas: SmallVec<[(u64, u64); 16]>,
+}
 
-    (heap_start, heap_end)
+impl Iterator for PhysFrameIter {
+    type Item = PageRange;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        use serial::sprintln;
+
+        loop {
+            if self.area_index >= self.memory_areas.len() {
+                return None;
+            }
+
+            let (area_start, area_end) = self.memory_areas[self.area_index];
+
+            let (section_start, section_end) = match (area_start..area_end)
+                .step_by(self.hole_size)
+                .nth(self.section_index)
+            {
+                None => {
+                    self.area_index += 1;
+                    self.section_index = 0;
+                    continue;
+                }
+
+                Some(section_start) => {
+                    self.section_index += 1;
+                    (
+                        (section_start as u64),
+                        (section_start as u64) + (self.hole_size as u64),
+                    )
+                }
+            };
+
+            let section = page_range_exclusive(section_start as u64, section_end as u64);
+
+            if self
+                .elf_areas
+                .iter()
+                .map(|area| area.clone())
+                .any(|(start, stop)| max(section_start, start) <= min(section_end, stop))
+            {
+                continue;
+            }
+
+            return Some(section);
+        }
+    }
 }
