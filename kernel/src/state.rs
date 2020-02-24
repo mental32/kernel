@@ -99,45 +99,6 @@ impl KernelStateObject {
     }
 
     // Initialization related methods
-
-    unsafe fn initial_pml3_map(&mut self, last_addr: u64) {
-        // Identity map all possible physical memory up to 2GiB
-        static mut IDENT_MAP_PML3: PageTable = PageTable::new();
-        assert!(IDENT_MAP_PML3.iter().all(|entry| entry.is_unused()));
-
-        for (index, entry) in IDENT_MAP_PML3.iter_mut().enumerate() {
-            let addr = (TWO_MIB * index).try_into().unwrap();
-
-            if addr >= last_addr {
-                sprintln!(
-                    "Stopping identity mapping at PML3 index={:?}, addr=0x{:x?}, last_addr=0x{:x?}",
-                    index,
-                    addr,
-                    last_addr
-                );
-                break;
-            }
-
-            entry.set_addr(
-                PhysAddr::new(addr),
-                PageTableFlags::PRESENT | PageTableFlags::WRITABLE | PageTableFlags::HUGE_PAGE,
-            );
-        }
-
-        // Map the identity PML3 to the new PML4 and updated CR3
-        let mut pml4 = PAGE_MAP_LEVEL_4.write();
-        pml4.zero();
-
-        pml4[0].set_addr(
-            PhysAddr::new(&IDENT_MAP_PML3 as *const PageTable as u64),
-            PageTableFlags::PRESENT,
-        );
-
-        let pml4_addr = &*pml4 as *const PageTable as u64;
-        let phys_addr = PhysAddr::new(pml4_addr);
-        Cr3::write(PhysFrame::containing_address(phys_addr), Cr3Flags::empty());
-    }
-
     unsafe fn load_tables(&mut self) {
         // TSS
         self.tss.interrupt_stack_table[0] = {
@@ -264,10 +225,10 @@ impl KernelStateObject {
         );
 
         // Load tables
-        self.load_tables();
+        // self.load_tables();
 
         // Device drivers
-        self.load_device_drivers();
+        // self.load_device_drivers();
 
         Ok(())
     }

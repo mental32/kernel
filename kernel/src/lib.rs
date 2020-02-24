@@ -5,6 +5,7 @@
 #![feature(alloc_error_handler)]
 #![feature(allocator_api)]
 #![feature(const_fn)]
+#![feature(const_mut_refs)]
 
 //! A muggle blood kernel written in Rust, C and Haskell, with an embedded
 //! WASM runtime.

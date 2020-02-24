@@ -13,4 +13,4 @@ pub mod boot_frame;
 pub use heap::LockedHeap;
 
 #[no_mangle]
-pub static PAGE_MAP_LEVEL_4: RwLock<PageTable> = RwLock::new(PageTable::new());
+pub static mut PAGE_MAP_LEVEL_4: PageTable = PageTable::new();

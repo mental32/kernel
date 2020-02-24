@@ -1,7 +1,3 @@
-extern kmain
-
-global _start
-
 section .rodata
 
 gdt64:
@@ -16,7 +12,6 @@ section .bss
 
 align 4096
 
-PML4: resb 4096
 PDPT: resb 4096
 PDT:  resb 4096
 
@@ -28,6 +23,7 @@ section .text
 
 bits 32
 
+global _start
 _start:
     ; We should be loaded by a multiboot2 compliant bootloader, info:
     ; https://www.gnu.org/software/grub/manual/multiboot2/multiboot.html#Machine-state
@@ -98,15 +94,18 @@ _start:
 
 .paging:
 .paging.map:
+
+extern PAGE_MAP_LEVEL_4
+
     ; map first P4 entry to P3 table
     mov eax, PDPT
     or eax, 0b11 ; present + writable
-    mov [PML4], eax
+    mov [PAGE_MAP_LEVEL_4], eax
 
-    mov eax, PML4
+    mov eax, PAGE_MAP_LEVEL_4
     or eax, 0b11
 
-    mov [PML4 + (8 * 511)], eax
+    mov [PAGE_MAP_LEVEL_4 + (8 * 511)], eax
     mov [PDPT + (8 * 511)], eax
     mov [PDT + (8 * 511)], eax
 
@@ -132,7 +131,7 @@ _start:
 .paging.enable:
 
     ; Load PML4 address into CR3
-    mov eax, PML4
+    mov eax, PAGE_MAP_LEVEL_4
     mov cr3, eax
 
     ; Set PAE bit in CR4
