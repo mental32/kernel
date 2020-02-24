@@ -202,27 +202,40 @@ impl KernelStateObject {
             ));
         }
 
-        self.heap = Some(&GLOBAL_ALLOCATOR);
-
-        let map = boot_info.memory_map_tag().unwrap();
-        let last_addr = map
-            .memory_areas()
-            .into_iter()
-            .map(|area| area.end_address())
-            .max()
-            .unwrap();
-
-        // PAGING
-        self.initial_pml3_map(last_addr);
+        let map = boot_info
+            .memory_map_tag()
+            .expect("Unable to find a memory map to initialize the system with.");
 
         // ALLOCATOR
-        let (heap_start, heap_end) =
-            mm::boot_frame::find_first_non_overlapping_free_area(0x400 * 100, boot_info);
+        self.heap = Some(&GLOBAL_ALLOCATOR);
+
+        // Find 4KiB holes.
+        let mut holes = mm::boot_frame::find_holes(0x1000, boot_info);
+
+        let (heap_start, heap_end) = match holes.next() {
+            None => panic!("Not enough memory to allocate a 4KiB heap!"),
+            Some(range) => (
+                range.start.start_address().as_u64(),
+                range.end.start_address().as_u64(),
+            ),
+        };
 
         self.heap.unwrap().lock().init(
             heap_start.try_into().unwrap(),
             (heap_end - heap_start).try_into().unwrap(),
         );
+
+        for hole in holes {
+            sprintln!("{:?}", hole);
+        }
+
+        sprintln!("{:?}", boot_info);
+
+        // PAGING
+        // let mut pml4 = OffsetPageTable::new(&mut PAGE_MAP_LEVEL_4, VirtAddr::new(0x00));
+        // let pml4_addr = *pml4 as *const PageTable as u64;
+        // let phys_addr = PhysAddr::new(pml4_addr);
+        // Cr3::write(PhysFrame::containing_address(phys_addr), Cr3Flags::empty());
 
         // Load tables
         // self.load_tables();
