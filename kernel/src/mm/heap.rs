@@ -12,7 +12,8 @@ use super::buddy::Heap as RawHeap;
 #[cfg(feature = "bump-alloc")]
 use super::bump::Heap as RawHeap;
 
-// use linked_list_allocator::Heap as RawHeap;
+#[cfg(feature = "linked-list-alloc")]
+use linked_list_allocator::Heap as RawHeap;
 
 #[derive(Debug)]
 pub struct LockedHeap(Mutex<RawHeap>);
