@@ -48,7 +48,7 @@ pub fn elf_areas(boot_info: &BootInformation) -> SmallVec<[(u64, u64); 16]> {
         .map(|section| {
             Some(page_range_inclusive(
                 section.start_address(),
-                section.end_address() + section.size(),
+                section.end_address(),
             ))
         })
         .collect::<SmallVec<[Option<PageRangeInclusive>; 16]>>();
