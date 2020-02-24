@@ -6,9 +6,10 @@ pub(self) mod buddy;
 #[cfg(feature = "bump-alloc")]
 pub(self) mod bump;
 
-pub(self) mod heap;
-
 pub mod boot_frame;
+pub(self) mod heap;
+mod pmm;
+mod vmm;
 
 pub use heap::LockedHeap;
 
