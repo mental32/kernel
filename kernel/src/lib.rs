@@ -15,6 +15,7 @@ compile_error!("This kernel only supports the (AMD) x86_64 architecture.");
 
 extern crate alloc;
 
+mod log;
 mod dev;
 mod gdt;
 mod isr;
