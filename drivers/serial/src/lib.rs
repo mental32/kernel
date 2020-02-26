@@ -25,37 +25,76 @@
 //! sprintln!("{:?}", "Hello, World!");
 //! ```
 
-use {core::fmt::Write, lazy_static::lazy_static, spin::Mutex, uart_16550::SerialPort};
+use core::fmt::{self, Write};
+
+use {spin::Mutex, uart_16550::SerialPort};
+
+#[cfg(feature = "default")]
+use lazy_static::lazy_static;
 
 /// Default serial io port for x86 systems.
 pub const DEAFULT_SERIAL_IO_PORT: u16 = 0x3F8;
 
-lazy_static! {
-    /// Global static refrence to a ``Mutex<SerialPort>`` using the ``DEAFULT_SERIAL_IO_PORT`` port.
-    pub static ref GLOBAL_DEFAULT_SERIAL: Mutex<SerialPort> = {
+
+/// A newtype that represents a locked serial port.
+pub struct SerialIO(Mutex<SerialPort>);
+
+impl SerialIO {
+    /// Get a new initialized SerialIO port.
+    pub fn new() -> Self {
         let mut port = unsafe { SerialPort::new(DEAFULT_SERIAL_IO_PORT) };
         port.init();
-        Mutex::new(port)
+        Self(Mutex::new(port))
+    }
+
+    /// Write formatted arguments into a serial port and panic on errors.
+    #[inline]
+    pub fn print_args(&self, args: fmt::Arguments) {
+        self.0.lock().write_fmt(args).unwrap();
+    }
+}
+
+#[cfg(feature = "default")]
+lazy_static! {
+    /// Global static refrence to a ``Mutex<SerialPort>`` using the ``DEAFULT_SERIAL_IO_PORT`` port.
+    pub static ref GLOBAL_DEFAULT_SERIAL: SerialIO = {
+        SerialIO::new()
     };
 }
 
-/// Write formatted arguments into a serial port and panic on errors.
-#[inline]
-pub fn serial_println(port: &mut SerialPort, args: core::fmt::Arguments) {
-    port.write_fmt(args).unwrap();
-    port.write_fmt(format_args!("\n")).unwrap();
+
+/// Emit some data without a newline.
+#[macro_export]
+macro_rules! sprint {
+    ($($arg:tt)*) => ({
+
+        #[cfg(not(feature = "default"))]
+        compile_error!("Unable to infer handle from macro args or the `global-serial` feature is not enabled.");
+
+        #[cfg(feature = "default")]
+        {
+            (*$crate::GLOBAL_DEFAULT_SERIAL).print_args(format_args!($($arg)*));
+        }
+
+    });
+
+    ($handle:ident, $($arg:tt)*) => ({
+        let mut handle: SerialIO = $handle;
+        handle.print_args($($arg)*);
+    })
 }
 
-/// Helper macros that deal with serial IO.
+
+/// Emit some data with a newline.
 #[macro_export]
 macro_rules! sprintln {
-    ($($arg:tt)*) => {
-        let mut handle = (*$crate::GLOBAL_DEFAULT_SERIAL).lock();
-        $crate::serial_println(&mut handle, format_args!($($arg)*));
-        core::mem::drop(handle);
-    };
+    ($($arg:tt)*) => ({
+        $crate::sprint!($($arg)*);
+        $crate::sprint!("\n");
+    });
 
-    ($handle:ident, $($arg:tt)*) => {
-        $crate::serial_println(&mut $handle, format_args!($($arg)*));
-    }
+    ($handle:ident, $($arg:tt)*) => ({
+        $crate::sprint!($handle, $($arg:tt)*);
+        $crate::sprint!($handle, "\n");
+    })
 }
