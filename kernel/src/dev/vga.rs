@@ -4,6 +4,7 @@ use {multiboot2::FramebufferTag, volatile::Volatile};
 
 use vga::{RawChar, VGABuffer};
 
+
 #[derive(Debug)]
 pub struct VGAFramebuffer<'a> {
     tag: FramebufferTag<'a>,
@@ -20,7 +21,8 @@ impl<'a> VGAFramebuffer<'a> {
 macro_rules! vprint {
     ($writer:ident, $($arg:tt)*) => {
         x86_64::instructions::interrupts::without_interrupts(|| {
-            core::fmt::Write($writer, format_args!($($arg)*)).unwrap();
+            use core::fmt::Write;
+            $writer.write_fmt(format_args!($($arg)*)).unwrap();
         })
     };
 }
