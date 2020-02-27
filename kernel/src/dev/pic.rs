@@ -37,7 +37,7 @@ impl Chip8259 {
 
     pub unsafe fn remap(&self, slave: u8, master: u8) {
         let mut handle = self.pic.lock();
-        *handle = unsafe { ChainedPics::new(slave, master) }
+        *handle = ChainedPics::new(slave, master);
     }
 
     pub unsafe fn mask_all(&self) {
