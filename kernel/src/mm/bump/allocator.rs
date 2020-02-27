@@ -1,10 +1,8 @@
 use core::ptr::NonNull;
 
-use alloc::alloc::{Alloc, AllocErr, Layout};
+use alloc::alloc::{AllocRef, AllocErr, Layout};
 
 use super::arena::Arena;
-
-use serial::sprintln;
 
 #[derive(Debug)]
 pub struct Heap {
@@ -26,7 +24,7 @@ impl Heap {
     }
 }
 
-unsafe impl Alloc for Heap {
+unsafe impl AllocRef for Heap {
     unsafe fn alloc(&mut self, layout: Layout) -> Result<NonNull<u8>, AllocErr> {
         let head = &mut self.head;
 
@@ -35,7 +33,7 @@ unsafe impl Alloc for Heap {
         }
 
         let mut neighbour = head.neighbour.as_mut();
-        for _ in (0..(self.count)) {
+        for _ in 0..(self.count) {
             let arena = match neighbour {
                 None => break,
                 v => v.unwrap(),
