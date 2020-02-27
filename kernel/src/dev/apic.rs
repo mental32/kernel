@@ -36,7 +36,7 @@ pub fn is_apic_supported() -> bool {
 pub struct LapicEOIPtr(*const u16);
 
 /// Initialize the APIC
-pub fn initialize(acpi: &Acpi) -> KernelResult<(&Apic, LapicEOIPtr)> {
+pub fn initialize<'a>(acpi: &'a Acpi) -> KernelResult<(&'a Apic, LapicEOIPtr)> {
     let apic = match &acpi.interrupt_model {
         Some(InterruptModel::Apic(apic)) => apic,
         _ => panic!("Attempted to initialize the APIC with a bad ACPI interrupt model"),
