@@ -83,10 +83,7 @@ pub fn elf_areas(boot_info: &BootInformation) -> SmallVec<[(u64, u64); 16]> {
         .collect::<SmallVec<[(u64, u64); 16]>>()
 }
 
-pub fn find_holes(
-    hole_size: usize,
-    boot_info: &BootInformation,
-) -> impl Iterator<Item = PageRange> {
+pub fn find_holes(hole_size: usize, boot_info: &BootInformation) -> PhysFrameIter {
     let memory_areas = boot_info
         .memory_map_tag()
         .unwrap()
