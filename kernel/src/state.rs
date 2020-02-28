@@ -2,40 +2,33 @@ use core::{convert::TryInto, mem::size_of};
 
 use alloc::boxed::Box;
 
-use {bit_field::BitField, multiboot2::BootInformation, smallvec::SmallVec, spin::Mutex};
-
+use acpi::{search_for_rsdp_bios, AcpiError};
 use x86_64::{
     instructions::{
         segmentation::set_cs,
         tables::{lidt, load_tss, DescriptorTablePointer},
     },
-    registers::control::{Cr3, Cr3Flags},
     structures::{
         gdt::{Descriptor, DescriptorFlags, SegmentSelector},
         idt::{HandlerFunc, InterruptDescriptorTable},
-        paging::{
-            frame::PhysFrame,
-            page::{PageRange, PageRangeInclusive},
-            page_table::{PageTable, PageTableFlags},
-            Page,
-        },
+        paging::{page_table::PageTableFlags, FrameAllocator},
         tss::TaskStateSegment,
     },
-    PhysAddr, VirtAddr,
+    VirtAddr,
 };
 
-use {pic8259::ChainedPics, pit825x::ProgrammableIntervalTimer, serial::sprintln};
+use {bit_field::BitField, multiboot2::BootInformation};
+
+use serial::sprintln;
 
 use crate::{
-    dev::{apic, pic::CHIP_8259, vga::VGAFramebuffer},
+    dev::{apic, pic::CHIP_8259},
     gdt::ExposedGlobalDescriptorTable,
     isr,
-    mm::{self, LockedHeap, PAGE_MAP_LEVEL_4},
+    mm::{self, LockedHeap, MemoryManagerType, PhysFrameManager, MEMORY_MANAGER},
     result::{KernelException, KernelResult},
     GLOBAL_ALLOCATOR,
 };
-
-const TWO_MIB: usize = 0x200000;
 
 struct Selectors {
     code_selector: Option<SegmentSelector>,
@@ -47,7 +40,8 @@ pub struct KernelStateObject {
     // Hardware
     devices: Option<()>,
     // Structures
-    heap: Option<&'static LockedHeap>,
+    heap_allocator: Option<&'static LockedHeap>,
+    memory_manager: Option<&'static MemoryManagerType>,
     selectors: Selectors,
     // Tables
     gdt: ExposedGlobalDescriptorTable,
@@ -62,7 +56,7 @@ impl AcpiHandler for KernelStateObject {
     fn map_physical_region<T>(
         &mut self,
         physical_address: usize,
-        size: usize,
+        _size: usize,
     ) -> PhysicalMapping<T> {
         PhysicalMapping {
             physical_start: physical_address,
@@ -72,7 +66,7 @@ impl AcpiHandler for KernelStateObject {
         }
     }
 
-    fn unmap_physical_region<T>(&mut self, region: PhysicalMapping<T>) {}
+    fn unmap_physical_region<T>(&mut self, _region: PhysicalMapping<T>) {}
 }
 
 impl KernelStateObject {
@@ -92,13 +86,17 @@ impl KernelStateObject {
             gdt,
 
             selectors,
-            heap: None,
+
+            heap_allocator: None,
+            memory_manager: None,
 
             devices: None,
         }
     }
 
     // Initialization related methods
+
+    /// Load the GDT, IDT tables and CS, TSS selectors.
     unsafe fn load_tables(&mut self) {
         // TSS
         self.tss.interrupt_stack_table[0] = {
@@ -148,10 +146,9 @@ impl KernelStateObject {
         self.load_idt();
     }
 
+    /// Detect and use ACPI to load device drivers and initialize the APIC and
+    /// AML interpreter.
     unsafe fn load_device_drivers(&mut self) {
-        // ACPI
-        use acpi::{search_for_rsdp_bios, AcpiError};
-
         let maybe_acpi = {
             let acpi = match search_for_rsdp_bios(self) {
                 Ok(acpi) => Some(acpi),
@@ -172,7 +169,7 @@ impl KernelStateObject {
             if apic_supported {
                 sprintln!("APIC support detected, proceeding to remap and mask PIT8259");
 
-                if let Ok((apic, lapic_eoi_ptr)) = apic::initialize(&acpi) {
+                if let Ok((apic, _lapic_eoi_ptr)) = apic::initialize(&acpi) {
                     if apic.also_has_legacy_pics {
                         CHIP_8259.remap(0xA0, 0xA8);
                         CHIP_8259.mask_all();
@@ -188,6 +185,9 @@ impl KernelStateObject {
 
             // AML interpreter instance
             // TODO: Finish wrapping lai (https://github.com/mental32/lai-rs)
+
+        } else {
+            sprintln!("No ACPI support detected!");
         }
 
         if legacy_pics_supported {
@@ -195,47 +195,56 @@ impl KernelStateObject {
         }
     }
 
+    /// Prepare the kernel and host machine state.
     pub unsafe fn prepare(&mut self, boot_info: &BootInformation) -> KernelResult<()> {
-        if self.heap.is_some() {
+        if self.heap_allocator.is_some() {
             return Err(KernelException::IllegalDoubleCall(
                 "Attempted to call KernelStateObject::prepare twice.",
             ));
         }
 
-        let map = boot_info
-            .memory_map_tag()
-            .expect("Unable to find a memory map to initialize the system with.");
+        self.heap_allocator = Some(&GLOBAL_ALLOCATOR);
+        self.memory_manager = Some(&MEMORY_MANAGER);
 
-        // ALLOCATOR
-        self.heap = Some(&GLOBAL_ALLOCATOR);
+        // Initialize the memory manager.
+        {
+            let mut memory_manager = self
+                .memory_manager
+                .unwrap()
+                .try_lock()
+                .expect("Unable to unlock the memory manager during kernel prepare.");
 
-        // Find 4KiB holes.
-        let mut holes = mm::boot_frame::find_holes(0x1000, boot_info);
+            // Use the boot info memory map to find all non overlapping
+            // 4KiB sized holes in available memory.
+            let holes = mm::boot_frame::find_holes(0x1000, boot_info);
 
-        let (heap_start, heap_end) = match holes.next() {
-            None => panic!("Not enough memory to allocate a 4KiB heap!"),
-            Some(range) => (
-                range.start.start_address().as_u64(),
-                range.end.start_address().as_u64(),
-            ),
-        };
+            let virtual_offset = VirtAddr::new(0x00);
+            memory_manager.initialize(virtual_offset, PhysFrameManager::new(holes, 0));
 
-        self.heap.unwrap().lock().init(
-            heap_start.try_into().unwrap(),
-            (heap_end - heap_start).try_into().unwrap(),
-        );
+            pub const HEAP_START: u64 = 0x4444_4444_0000;
+            pub const HEAP_SIZE: u64 = 100 * 1024;
 
-        for hole in holes {
-            sprintln!("{:?}", hole);
+            // Allocate and map the heap.
+            for page in mm::page_range_inclusive(HEAP_START, HEAP_START + HEAP_SIZE) {
+                let frame = memory_manager.allocate_frame().unwrap();
+                let flags = PageTableFlags::PRESENT | PageTableFlags::WRITABLE;
+
+                memory_manager.map_to(page, frame, flags).unwrap().flush();
+            }
+
+            self.heap_allocator
+                .unwrap()
+                .try_lock()
+                .expect("Unable to lock the heap allocator during kernel prepare.")
+                .init(
+                    HEAP_START.try_into().unwrap(),
+                    (HEAP_START + HEAP_SIZE).try_into().unwrap(),
+                );
+
+            // Reload Cr3 with our pml4 for safe measure.
+
+            memory_manager.reload_paging_table();
         }
-
-        sprintln!("{:?}", boot_info);
-
-        // PAGING
-        // let mut pml4 = OffsetPageTable::new(&mut PAGE_MAP_LEVEL_4, VirtAddr::new(0x00));
-        // let pml4_addr = *pml4 as *const PageTable as u64;
-        // let phys_addr = PhysAddr::new(pml4_addr);
-        // Cr3::write(PhysFrame::containing_address(phys_addr), Cr3Flags::empty());
 
         // Load tables
         // self.load_tables();
