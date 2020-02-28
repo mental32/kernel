@@ -9,7 +9,7 @@ pub(self) mod bump;
 pub mod boot_frame;
 pub(self) mod heap;
 mod pmm;
-mod vmm;
+
 
 pub use heap::LockedHeap;
 
