@@ -5,42 +5,14 @@ use core::cmp::{max, min};
 use {multiboot2::BootInformation, smallvec::SmallVec};
 
 use x86_64::{
-    instructions::{
-        segmentation::set_cs,
-        tables::{lidt, load_tss, DescriptorTablePointer},
+    structures::paging::{
+        page::{PageRange, PageRangeInclusive},
+        Page,
     },
-    registers::control::{Cr3, Cr3Flags},
-    structures::{
-        gdt::{Descriptor, DescriptorFlags, SegmentSelector},
-        idt::InterruptDescriptorTable,
-        paging::{
-            frame::PhysFrame,
-            page::{PageRange, PageRangeInclusive},
-            page_table::{PageTable, PageTableFlags},
-            Page,
-        },
-        tss::TaskStateSegment,
-    },
-    PhysAddr, VirtAddr,
 };
 
-fn raw_page_range(start: u64, stop: u64) -> (Page, Page) {
-    let start = VirtAddr::new(start);
-    let end = VirtAddr::new(stop);
-    let start_page = Page::containing_address(start);
-    let end_page = Page::containing_address(end);
-    (start_page, end_page)
-}
+use super::{page_range_inclusive, page_range_exclusive};
 
-fn page_range_exclusive(start: u64, stop: u64) -> PageRange {
-    let (start_page, end_page) = raw_page_range(start, stop);
-    Page::range(start_page, end_page)
-}
-
-fn page_range_inclusive(start: u64, stop: u64) -> PageRangeInclusive {
-    let (start_page, end_page) = raw_page_range(start, stop);
-    Page::range_inclusive(start_page, end_page)
-}
 
 pub fn elf_areas(boot_info: &BootInformation) -> SmallVec<[(u64, u64); 16]> {
     let elf_tag = boot_info.elf_sections_tag().unwrap();
@@ -113,8 +85,6 @@ impl Iterator for PhysFrameIter {
     type Item = PageRange;
 
     fn next(&mut self) -> Option<Self::Item> {
-        use serial::sprintln;
-
         loop {
             if self.area_index >= self.memory_areas.len() {
                 return None;
