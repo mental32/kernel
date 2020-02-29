@@ -45,16 +45,16 @@ impl Chip8259 {
         pt!(0x21).write(0xFF);
     }
 
-    pub unsafe fn setup(&self, kernel: &mut KernelStateObject) {
+    pub unsafe fn setup(&self, pic_slave_offset: u8, kernel: &mut KernelStateObject) {
         use controller_interrupt_handlers::*;
 
         kernel.set_idt_entry(
-            DEFAULT_PIC_SLAVE_OFFSET + (InterruptIndex::Timer as u8),
+            pic_slave_offset + (InterruptIndex::Timer as u8),
             timer_interrupt_handler,
         );
 
         kernel.set_idt_entry(
-            DEFAULT_PIC_SLAVE_OFFSET + (InterruptIndex::PS2Keyboard as u8),
+            pic_slave_offset + (InterruptIndex::PS2Keyboard as u8),
             keyboard_interrupt_handler,
         );
 

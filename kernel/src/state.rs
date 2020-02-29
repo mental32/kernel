@@ -22,7 +22,7 @@ use {bit_field::BitField, multiboot2::BootInformation};
 use serial::sprintln;
 
 use crate::{
-    dev::{apic, pic::CHIP_8259},
+    dev::{apic, pic::{CHIP_8259, DEFAULT_PIC_SLAVE_OFFSET}},
     gdt::ExposedGlobalDescriptorTable,
     isr,
     mm::{self, LockedHeap, MemoryManagerType, PhysFrameManager, MEMORY_MANAGER},
@@ -164,6 +164,8 @@ impl KernelStateObject {
         let apic_supported = apic::is_apic_supported();
         let mut legacy_pics_supported = true;
 
+        let mut legacy_pics_slave_offset = DEFAULT_PIC_SLAVE_OFFSET;
+
         if let Some(acpi) = maybe_acpi {
             // APIC/LAPIC initialization and setup
             if apic_supported {
@@ -171,6 +173,7 @@ impl KernelStateObject {
 
                 if let Ok((apic, lapic_eoi_ptr)) = apic::initialize(&acpi) {
                     if apic.also_has_legacy_pics {
+                        legacy_pics_slave_offset = 0xA0;
                         CHIP_8259.remap(0xA0, 0xA8);
                         CHIP_8259.mask_all();
                     } else {
@@ -191,7 +194,7 @@ impl KernelStateObject {
         }
 
         if legacy_pics_supported {
-            CHIP_8259.setup(self);
+            CHIP_8259.setup(legacy_pics_slave_offset, self);
         }
     }
 
