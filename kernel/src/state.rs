@@ -98,6 +98,10 @@ impl KernelStateObject {
 
     /// Load the GDT, IDT tables and CS, TSS selectors.
     unsafe fn load_tables(&mut self) {
+        // IDT
+        isr::map_default_handlers(&mut self.idt);
+        self.load_idt();
+
         // TSS
         self.tss.interrupt_stack_table[0] = {
             const STACK_SIZE: usize = 4096;
@@ -140,10 +144,6 @@ impl KernelStateObject {
 
         set_cs(self.selectors.code_selector.unwrap());
         load_tss(self.selectors.tss_selector.unwrap());
-
-        // IDT
-        isr::map_default_handlers(&mut self.idt);
-        self.load_idt();
     }
 
     /// Detect and use ACPI to load device drivers and initialize the APIC and
