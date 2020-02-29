@@ -240,10 +240,6 @@ impl KernelStateObject {
                     HEAP_START.try_into().unwrap(),
                     HEAP_SIZE.try_into().unwrap(),
                 );
-
-            // Reload Cr3 with our pml4 for safe measure.
-
-            memory_manager.reload_paging_table();
         }
 
         // Load tables
