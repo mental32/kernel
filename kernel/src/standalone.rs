@@ -27,27 +27,12 @@ pub unsafe extern "C" fn kmain(multiboot_addr: usize) -> ! {
     let boot_info = load(multiboot_addr);
 
     // Setting everything up for regular work.
-    // The call to ``KernelStateObject::prepare`` will:
+    //
+    // The call to `KernelStateObject::prepare` will:
+    //  - Initialize the global allocator and memory manager
     //  - Initialize the GDT & IDT
     //  - Load the appropriate code and tss selectors
-    //  - Initialize the global allocator and memory manager
     //  - Resize, remap or modify current [kernel] pages and setup a heap.
-
-    // use log::{SystemLogger, LogProducer};
-    // use smallvec::smallvec;
-    // use serial::SerialIO;
-    // use dev::vga::VGAFramebuffer;
-    // use vga::VGAWriter;
-
-    // let serial_: &mut dyn LogProducer = &mut SerialIO::new();
-
-    // let mut framebuffer = VGAFramebuffer::new(boot_info.framebuffer_tag().unwrap());
-
-    // let vga_: &mut dyn LogProducer = &mut VGAWriter::new(&mut framebuffer);
-
-    // let mut logger = SystemLogger::new(smallvec![serial_, vga_]);
-
-    // logger.info("Test");
 
     {
         let mut state = kernel!().lock();
