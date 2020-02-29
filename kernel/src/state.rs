@@ -238,7 +238,7 @@ impl KernelStateObject {
                 .expect("Unable to lock the heap allocator during kernel prepare.")
                 .init(
                     HEAP_START.try_into().unwrap(),
-                    (HEAP_START + HEAP_SIZE).try_into().unwrap(),
+                    HEAP_SIZE.try_into().unwrap(),
                 );
 
             // Reload Cr3 with our pml4 for safe measure.
