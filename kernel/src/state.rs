@@ -11,7 +11,7 @@ use x86_64::{
     structures::{
         gdt::{Descriptor, DescriptorFlags, SegmentSelector},
         idt::{HandlerFunc, InterruptDescriptorTable},
-        paging::{page_table::PageTableFlags, FrameAllocator},
+        paging::{page_table::PageTableFlags},
         tss::TaskStateSegment,
     },
     VirtAddr,
@@ -38,7 +38,7 @@ struct Selectors {
 /// A struct that journals the kernels state.
 pub struct KernelStateObject {
     // Hardware
-    devices: Option<()>,
+    // devices: Option<()>,
     // Structures
     heap_allocator: Option<&'static LockedHeap>,
     memory_manager: Option<&'static MemoryManagerType>,
@@ -90,7 +90,7 @@ impl KernelStateObject {
             heap_allocator: None,
             memory_manager: None,
 
-            devices: None,
+            // devices: None,
         }
     }
 

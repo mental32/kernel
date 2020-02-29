@@ -1,5 +1,6 @@
 #![no_std]
 #![forbid(missing_docs)]
+#![allow(unused_attributes)]
 #![feature(lang_items)]
 #![feature(abi_x86_interrupt)]
 #![feature(alloc_error_handler)]
@@ -15,15 +16,15 @@ compile_error!("This kernel only supports the (AMD) x86_64 architecture.");
 
 extern crate alloc;
 
-mod log;
+// mod log;
 mod dev;
 mod gdt;
 mod isr;
 mod mm;
 mod result;
-mod sched;
+// mod sched;
 mod state;
-mod vfs;
+// mod vfs;
 
 /// A macro used to quicky construct handles to ports.
 #[macro_use]

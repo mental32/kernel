@@ -3,7 +3,7 @@
 use acpi::interrupt::{Apic, InterruptModel};
 use acpi::Acpi;
 
-use x86_64::{structures::paging::{PageTableFlags, Page, FrameAllocator}, VirtAddr};
+use x86_64::{structures::paging::{PageTableFlags, Page}, VirtAddr};
 
 use crate::{mm, result::KernelResult};
 
