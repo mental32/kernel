@@ -54,7 +54,7 @@ pub unsafe extern "C" fn kmain(multiboot_addr: usize) -> ! {
         state.prepare(&boot_info).unwrap();
     }
 
-    // interrupts::enable();
+    interrupts::enable();
 
     loop {
         hlt()

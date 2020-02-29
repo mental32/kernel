@@ -161,7 +161,8 @@ impl KernelStateObject {
             acpi
         };
 
-        let apic_supported = apic::is_apic_supported();
+        let apic_supported = false;
+        // let apic_supported = apic::is_apic_supported();
         let mut legacy_pics_supported = true;
 
         if let Some(acpi) = maybe_acpi {
@@ -246,7 +247,7 @@ impl KernelStateObject {
         self.load_tables();
 
         // Device drivers
-        // self.load_device_drivers();
+        self.load_device_drivers();
 
         Ok(())
     }
