@@ -3,7 +3,9 @@
 use acpi::interrupt::{Apic, InterruptModel};
 use acpi::Acpi;
 
-use crate::result::KernelResult;
+use x86_64::{structures::paging::{PageTableFlags, Page, FrameAllocator}, VirtAddr};
+
+use crate::{mm, result::KernelResult};
 
 macro_rules! lapic_write {
     ($madt_controller_addr:expr, $reg:expr, $data:expr) => {{
@@ -33,6 +35,7 @@ pub fn is_apic_supported() -> bool {
     *&cpuid.get_feature_info().unwrap().has_apic()
 }
 
+#[derive(Debug)]
 pub struct LapicEOIPtr(*const u16);
 
 /// Initialize the APIC
@@ -41,6 +44,22 @@ pub fn initialize<'a>(acpi: &'a Acpi) -> KernelResult<(&'a Apic, LapicEOIPtr)> {
         Some(InterruptModel::Apic(apic)) => apic,
         _ => panic!("Attempted to initialize the APIC with a bad ACPI interrupt model"),
     };
+
+    {
+        let mut memory_manager = mm!()
+            .try_lock()
+            .expect("Unable to access the memory manager during APIC initialization.");
+
+        let flags = PageTableFlags::PRESENT | PageTableFlags::WRITABLE;
+
+        memory_manager
+            .map_to(
+                Page::containing_address(VirtAddr::new(apic.local_apic_address)),
+                flags,
+            )
+            .unwrap()
+            .flush();
+    }
 
     let lapic_base = apic.local_apic_address; // TODO: Map this since its a MMIO address
 
