@@ -34,7 +34,7 @@ impl<F: FrameAllocator<Size4KiB> + FrameDeallocator<Size4KiB>> MemoryManager<F> 
 
     pub unsafe fn initialize(&mut self, virt_offset: VirtAddr, falloc: F) {
         self.falloc = Some(falloc);
-        self.mapper = Some(OffsetPageTable::new(&mut *(self.pml4_addr.load(Ordering::SeqCst) as *mut PageTable), virt_offset));
+        self.mapper = Some(OffsetPageTable::new(&mut *self.pml4_addr.load(Ordering::SeqCst), virt_offset));
     }
 
     pub fn map_to(
@@ -50,7 +50,7 @@ impl<F: FrameAllocator<Size4KiB> + FrameDeallocator<Size4KiB>> MemoryManager<F> 
     }
 
     pub unsafe fn reload_paging_table(&self) {
-        let phys_addr = PhysAddr::new(self.pml4_addr.load(Ordering::SeqCst) as *mut PageTable as u64);
+        let phys_addr = PhysAddr::new(self.pml4_addr.load(Ordering::SeqCst) as u64);
         Cr3::write(PhysFrame::containing_address(phys_addr), Cr3Flags::empty());
     }
 }
