@@ -25,6 +25,8 @@ SECTIONS {
 
   .bss :
   {
+    *(.extra.bss)
+    . = ALIGN(4K);
     *(.bss .bss.*)
     . = ALIGN(4K);
   }

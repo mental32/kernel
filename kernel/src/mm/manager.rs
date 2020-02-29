@@ -12,17 +12,16 @@ use x86_64::{
     PhysAddr, VirtAddr,
 };
 
-
 pub struct MemoryManager<F: FrameAllocator<Size4KiB> + FrameDeallocator<Size4KiB>> {
-    pml4_addr: &'static mut AtomicPtr<PageTable>,
+    pub pml4_addr: AtomicPtr<PageTable>,
     mapper: Option<OffsetPageTable<'static>>,
     falloc: Option<F>,
 }
 
 impl<F: FrameAllocator<Size4KiB> + FrameDeallocator<Size4KiB>> MemoryManager<F> {
-    pub const fn new(pml4_addr: &'static mut AtomicPtr<PageTable>) -> Self {
+    pub const fn new(pml4_addr: AtomicPtr<PageTable>) -> Self {
         Self {
-            pml4_addr: pml4_addr,
+            pml4_addr,
             mapper: None,
             falloc: None,
         }

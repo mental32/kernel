@@ -247,7 +247,7 @@ impl KernelStateObject {
         }
 
         // Load tables
-        // self.load_tables();
+        self.load_tables();
 
         // Device drivers
         // self.load_device_drivers();

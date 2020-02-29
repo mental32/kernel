@@ -95,17 +95,17 @@ _start:
 .paging:
 .paging.map:
 
-extern PML4_ADDR
+extern PML4_SPACE
 
     ; map first P4 entry to P3 table
     mov eax, PDPT
     or eax, 0b11 ; present + writable
-    mov [PML4_ADDR], eax
+    mov [PML4_SPACE], eax
 
-    mov eax, PML4_ADDR
+    mov eax, PML4_SPACE
     or eax, 0b11
 
-    mov [PML4_ADDR + (8 * 511)], eax
+    mov [PML4_SPACE + (8 * 511)], eax
     mov [PDPT + (8 * 511)], eax
     mov [PDT + (8 * 511)], eax
 
@@ -131,7 +131,7 @@ extern PML4_ADDR
 .paging.enable:
 
     ; Load PML4 address into CR3
-    mov eax, PML4_ADDR
+    mov eax, PML4_SPACE
     mov cr3, eax
 
     ; Set PAE bit in CR4
