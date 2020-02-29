@@ -161,8 +161,7 @@ impl KernelStateObject {
             acpi
         };
 
-        let apic_supported = false;
-        // let apic_supported = apic::is_apic_supported();
+        let apic_supported = apic::is_apic_supported();
         let mut legacy_pics_supported = true;
 
         if let Some(acpi) = maybe_acpi {
@@ -170,7 +169,7 @@ impl KernelStateObject {
             if apic_supported {
                 sprintln!("APIC support detected, proceeding to remap and mask PIT8259");
 
-                if let Ok((apic, _lapic_eoi_ptr)) = apic::initialize(&acpi) {
+                if let Ok((apic, lapic_eoi_ptr)) = apic::initialize(&acpi) {
                     if apic.also_has_legacy_pics {
                         CHIP_8259.remap(0xA0, 0xA8);
                         CHIP_8259.mask_all();
@@ -178,7 +177,7 @@ impl KernelStateObject {
                         legacy_pics_supported = false;
                     }
 
-                    sprintln!("Finished initializing the APIC.");
+                    sprintln!("Finished initializing the APIC. ({:?}, {:?})", &apic, &lapic_eoi_ptr);
                 }
             } else {
                 sprintln!("NO APIC support detected!");
