@@ -42,13 +42,15 @@ impl<F: FrameAllocator<Size4KiB> + FrameDeallocator<Size4KiB> + Debug> MemoryMan
     pub fn map_to(
         &mut self,
         page: Page<Size4KiB>,
-        frame: UnusedPhysFrame<Size4KiB>,
         flags: PageTableFlags,
     ) -> Result<MapperFlush<Size4KiB>, MapToError<Size4KiB>> {
+        let mut falloc = self.falloc.as_mut().unwrap();
+        let mut frame = falloc.allocate_frame().unwrap();
+
         self.mapper
             .as_mut()
             .unwrap()
-            .map_to(page, frame, flags, self.falloc.as_mut().unwrap())
+            .map_to(page, frame, flags, falloc)
     }
 
     pub unsafe fn reload_paging_table(&self) {

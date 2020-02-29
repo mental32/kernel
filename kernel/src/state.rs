@@ -226,11 +226,9 @@ impl KernelStateObject {
             pub const HEAP_SIZE: u64 = 100 * 1024;
 
             // Allocate and map the heap.
+            let flags = PageTableFlags::PRESENT | PageTableFlags::WRITABLE;
             for page in mm::page_range_inclusive(HEAP_START, HEAP_START + HEAP_SIZE) {
-                let frame = memory_manager.allocate_frame().unwrap();
-                let flags = PageTableFlags::PRESENT | PageTableFlags::WRITABLE;
-
-                memory_manager.map_to(page, frame, flags).unwrap().flush();
+                memory_manager.map_to(page, flags).unwrap().flush();
             }
 
             self.heap_allocator
