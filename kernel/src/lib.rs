@@ -33,6 +33,13 @@ macro_rules! pt {
     ($ln:expr, $size:ty) => { Port::<$size>::($ln) }
 }
 
+/// A helper macro to access the memory manager.
+#[macro_use]
+#[macro_export]
+macro_rules! mm {
+    () => ($crate::mm::MEMORY_MANAGER)
+}
+
 #[cfg(feature = "standalone")]
 mod standalone;
 
