@@ -1,4 +1,5 @@
 use core::sync::atomic::{AtomicPtr, Ordering};
+use core::fmt::Debug;
 
 use spin::Mutex;
 
@@ -12,13 +13,14 @@ use x86_64::{
     PhysAddr, VirtAddr,
 };
 
-pub struct MemoryManager<F: FrameAllocator<Size4KiB> + FrameDeallocator<Size4KiB>> {
+#[derive(Debug)]
+pub struct MemoryManager<F: FrameAllocator<Size4KiB> + FrameDeallocator<Size4KiB> + Debug> {
     pub pml4_addr: AtomicPtr<PageTable>,
     mapper: Option<OffsetPageTable<'static>>,
     falloc: Option<F>,
 }
 
-impl<F: FrameAllocator<Size4KiB> + FrameDeallocator<Size4KiB>> MemoryManager<F> {
+impl<F: FrameAllocator<Size4KiB> + FrameDeallocator<Size4KiB> + Debug> MemoryManager<F> {
     pub const fn new(pml4_addr: AtomicPtr<PageTable>) -> Self {
         Self {
             pml4_addr,
@@ -55,7 +57,7 @@ impl<F: FrameAllocator<Size4KiB> + FrameDeallocator<Size4KiB>> MemoryManager<F> 
     }
 }
 
-unsafe impl<F: FrameAllocator<Size4KiB> + FrameDeallocator<Size4KiB>> FrameAllocator<Size4KiB>
+unsafe impl<F: FrameAllocator<Size4KiB> + FrameDeallocator<Size4KiB> + Debug> FrameAllocator<Size4KiB>
     for MemoryManager<F>
 {
     fn allocate_frame(&mut self) -> Option<UnusedPhysFrame<Size4KiB>> {

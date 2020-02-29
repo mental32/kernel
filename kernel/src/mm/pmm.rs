@@ -9,6 +9,7 @@ use x86_64::{
 
 use super::boot_frame::PhysFrameIter;
 
+#[derive(Debug)]
 pub struct PhysFrameManager {
     frame_map: SmallVec<[u64; 1]>,
     frames: PhysFrameIter,
