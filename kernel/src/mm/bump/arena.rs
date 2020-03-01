@@ -39,7 +39,6 @@ impl Arena {
         self.heap_start = heap_start;
         self.heap_end = heap_start + heap_size;
         self.next = heap_start;
-        serial::sprintln!("{:x?}", self);
     }
 
     pub unsafe fn alloc(&mut self, layout: Layout) -> Result<NonNull<u8>, AllocErr> {

@@ -40,7 +40,6 @@ unsafe impl AllocRef for Heap {
             };
 
             let res = arena.alloc(layout);
-            serial::sprintln!("=> {:?}", res);
 
             if let Ok(addr) = res {
                 return Ok(addr);
