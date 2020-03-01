@@ -12,7 +12,7 @@ pub mod boot_frame;
 pub(self) mod heap;
 mod helpers;
 mod manager;
-mod pmm;
+pub mod pmm;
 
 pub use {heap::LockedHeap, helpers::*, manager::*, pmm::PhysFrameManager};
 

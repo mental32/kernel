@@ -9,10 +9,10 @@ use x86_64::{
         page::{PageRange, PageRangeInclusive},
         Page,
     },
+    PhysAddr, VirtAddr,
 };
 
-use super::{page_range_inclusive, page_range_exclusive};
-
+use super::{page_range_exclusive, page_range_inclusive};
 
 pub fn elf_areas(boot_info: &BootInformation) -> SmallVec<[(u64, u64); 16]> {
     let elf_tag = boot_info.elf_sections_tag().unwrap();
@@ -67,6 +67,7 @@ pub fn find_holes(hole_size: usize, boot_info: &BootInformation) -> PhysFrameIte
         elf_areas: elf_areas(boot_info),
         hole_size,
         memory_areas,
+        count: 0,
         area_index: 0,
         section_index: 0,
     }
@@ -77,12 +78,60 @@ pub struct PhysFrameIter {
     hole_size: usize,
     area_index: usize,
     section_index: usize,
+    count: usize,
     memory_areas: SmallVec<[(u64, u64); 32]>,
     elf_areas: SmallVec<[(u64, u64); 16]>,
 }
 
+impl PhysFrameIter {
+    pub fn nth_area(&mut self, index: usize) -> Option<PageRange> {
+        let (preserved_area_index, preserved_section_index, preserved_counter) =
+            (self.area_index, self.section_index, self.count);
+
+        self.area_index = 0;
+        self.section_index = 0;
+        self.count = 0;
+
+        let range = self.nth(index - 1).and_then(|(_, range)| Some(range));
+
+        self.count = preserved_counter;
+        self.area_index = preserved_area_index;
+        self.section_index = preserved_section_index;
+
+        range
+    }
+
+    pub fn index_of_range_that_starts_at_address(&mut self, base: VirtAddr) -> Option<usize> {
+        let (preserved_area_index, preserved_section_index, preserved_counter) =
+            (self.area_index, self.section_index, self.count);
+
+        self.area_index = 0;
+        self.section_index = 0;
+        self.count = 0;
+
+        let mut res = None;
+        loop {
+            match self.next() {
+                None => break,
+                Some((index, range)) => {
+                    if range.start.start_address() == base {
+                        res = Some(index);
+                        break;
+                    }
+                }
+            }
+        }
+
+        self.count = preserved_counter;
+        self.area_index = preserved_area_index;
+        self.section_index = preserved_section_index;
+
+        res
+    }
+}
+
 impl Iterator for PhysFrameIter {
-    type Item = PageRange;
+    type Item = (usize, PageRange);
 
     fn next(&mut self) -> Option<Self::Item> {
         loop {
@@ -122,7 +171,8 @@ impl Iterator for PhysFrameIter {
                 continue;
             }
 
-            return Some(section);
+            self.count += 1;
+            return Some((self.count, section));
         }
     }
 }

@@ -221,8 +221,16 @@ impl KernelStateObject {
             // 4KiB sized holes in available memory.
             let holes = mm::boot_frame::find_holes(0x1000, boot_info);
 
+            use crate::mm::pmm::{BitMap, INITIAL_PHYSFRAME_BITMAP, INITIAL_PHYSFRAME_BITMAP_SIZE};
+            use core::sync::atomic::AtomicPtr;
+
+            let mut initial_bitmap = BitMap::new(
+                AtomicPtr::new(&mut INITIAL_PHYSFRAME_BITMAP as *mut _ as *mut u8),
+                INITIAL_PHYSFRAME_BITMAP_SIZE.try_into().unwrap(),
+            );
+
             let virtual_offset = VirtAddr::new(0x00);
-            memory_manager.initialize(virtual_offset, PhysFrameManager::new(holes, 0));
+            memory_manager.initialize(virtual_offset, PhysFrameManager::new(initial_bitmap, holes));
 
             pub const HEAP_START: u64 = 0x4444_4444_0000;
             pub const HEAP_SIZE: u64 = 100 * 1024;
