@@ -29,12 +29,15 @@ lazy_static = { version = "1.4.0", features = ["spin_no_std"] }
 linked_list_allocator = { version = "0.6.6", optional = true }
 
 [features]
-default = ["bump-alloc", "standalone"]
+default = ["bump-alloc", "rr-sched", "standalone"]
 
 standalone = []
+
 buddy-alloc = []
 bump-alloc = []
 linked-list-alloc = ["linked_list_allocator"]
+
+rr-sched = []
 
 [profile.dev]
 panic = "abort"

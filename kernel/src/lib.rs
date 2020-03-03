@@ -7,6 +7,12 @@
 #![feature(allocator_api)]
 #![feature(const_fn)]
 #![feature(const_mut_refs)]
+#![feature(never_type)]
+#![feature(asm)]
+#![feature(global_asm)]
+#![feature(raw)]
+#![feature(naked_functions)]
+#![feature(option_expect_none)]
 
 //! A muggle blood kernel written in Rust, C and Haskell, with an embedded
 //! WASM runtime.
@@ -22,7 +28,7 @@ mod gdt;
 mod isr;
 mod mm;
 mod result;
-// mod sched;
+mod sched;
 mod state;
 // mod vfs;
 

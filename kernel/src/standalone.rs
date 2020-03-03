@@ -6,11 +6,21 @@ use {
 
 use serial::sprintln;
 
-use crate::{mm::LockedHeap, state::KernelStateObject};
+use crate::{
+    mm::LockedHeap,
+    sched::{KernelScheduler, Scheduler},
+    state::KernelStateObject,
+};
 
+/// Global allocator refrence.
+#[global_allocator]
+pub static GLOBAL_ALLOCATOR: LockedHeap = LockedHeap::new();
 
-pub(crate) static KERNEL_STATE_OBJECT: Mutex<KernelStateObject> =
-    Mutex::new(KernelStateObject::new());
+/// Global scheduler refrence.
+pub static SCHEDULER: Mutex<Scheduler> = Mutex::new(Scheduler::new());
+
+/// Global kernel state refrence.
+pub static KERNEL_STATE_OBJECT: Mutex<KernelStateObject> = Mutex::new(KernelStateObject::new());
 
 /// Helper macro to refrence the kernel state object.
 #[macro_use]
@@ -18,6 +28,15 @@ pub(crate) static KERNEL_STATE_OBJECT: Mutex<KernelStateObject> =
 macro_rules! kernel {
     () => {
         $crate::KERNEL_STATE_OBJECT
+    };
+}
+
+/// Helper macro to refrence the kernel scheduler.
+#[macro_use]
+#[macro_export]
+macro_rules! scheduler {
+    () => {
+        $crate::SCHEDULER
     };
 }
 
@@ -39,16 +58,17 @@ pub unsafe extern "C" fn kmain(multiboot_addr: usize) -> ! {
         state.prepare(&boot_info).unwrap();
     }
 
+    scheduler!()
+        .try_lock()
+        .expect("Unable to Initialize scheduler!")
+        .init();
+
     interrupts::enable();
 
     loop {
         hlt()
     }
 }
-
-/// Global allocator refrence.
-#[global_allocator]
-pub static GLOBAL_ALLOCATOR: LockedHeap = LockedHeap::new();
 
 /// Allocation error handler.
 #[alloc_error_handler]

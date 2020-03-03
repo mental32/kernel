@@ -1,6 +1,10 @@
-mod executor;
-mod round_robin;
-mod scheduler;
-mod thread;
+pub mod multitasking;
+pub mod scheduler;
 
-pub use {round_robin::*, scheduler::*};
+pub use {multitasking::*, scheduler::*};
+
+#[cfg(feature = "rr-sched")]
+mod round_robin;
+
+#[cfg(feature = "rr-sched")]
+pub use round_robin::RoundRobin as Scheduler;

@@ -11,7 +11,7 @@ use {
     serial::sprintln,
 };
 
-use crate::{pt, state::KernelStateObject};
+use crate::{scheduler, sched::{KernelScheduler, SwitchReason, context_switch}, pt, state::KernelStateObject};
 
 /// IRQ offset for the slave pic.
 pub const DEFAULT_PIC_SLAVE_OFFSET: u8 = 32;
@@ -70,6 +70,19 @@ mod controller_interrupt_handlers {
     use super::*;
 
     pub extern "x86-interrupt" fn timer_interrupt_handler(_stack_frame: &mut InterruptStackFrame) {
+        let mut scheduler = scheduler!().try_lock().expect("Interrupt scheduler deadlocked?");
+
+        if let Some((next_stack_pointer, prev_thread_id)) = scheduler.schedule() {
+            unsafe {
+                context_switch::context_switch_to(
+                    next_stack_pointer,
+                    prev_thread_id,
+                    SwitchReason::Paused,
+                    &mut scheduler
+                )
+            };
+        }
+
         eoi!(
             DEFAULT_PIC_SLAVE_OFFSET,
             CHIP_8259.pic.lock(),

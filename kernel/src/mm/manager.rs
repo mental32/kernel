@@ -10,6 +10,8 @@ use x86_64::{
     VirtAddr,
 };
 
+use crate::sched::StackBounds;
+
 #[derive(Debug)]
 pub struct MemoryManager<F: FrameAllocator<Size4KiB> + FrameDeallocator<Size4KiB> + Debug> {
     pub pml4_addr: AtomicPtr<PageTable>,
@@ -28,7 +30,50 @@ impl<F: FrameAllocator<Size4KiB> + FrameDeallocator<Size4KiB> + Debug> MemoryMan
 
     pub unsafe fn initialize(&mut self, virt_offset: VirtAddr, falloc: F) {
         self.falloc = Some(falloc);
-        self.mapper = Some(OffsetPageTable::new(&mut *self.pml4_addr.load(Ordering::SeqCst), virt_offset));
+        self.mapper = Some(OffsetPageTable::new(
+            &mut *self.pml4_addr.load(Ordering::SeqCst),
+            virt_offset,
+        ));
+    }
+
+    /// Allocate a new stack to be used by a thread.
+    pub fn allocate_thread_stack(
+        &mut self,
+        size_in_pages: u64,
+    ) -> Result<StackBounds, MapToError<Size4KiB>> {
+        static STACK_ALLOC_NEXT: AtomicU64 = AtomicU64::new(0x_5555_5555_0000);
+
+        let guard_page_start = STACK_ALLOC_NEXT.fetch_add(
+            (size_in_pages + 1) * Page::<Size4KiB>::SIZE,
+            Ordering::SeqCst,
+        );
+
+        let guard_page = Page::from_start_address(VirtAddr::new(guard_page_start))
+            .expect("`STACK_ALLOC_NEXT` not page aligned");
+
+        let stack_start = guard_page + 1;
+        let stack_end = stack_start + size_in_pages;
+
+        let flags = PageTableFlags::PRESENT | PageTableFlags::WRITABLE;
+
+        sprintln!("{:?}", (&stack_start, &stack_end, &guard_page));
+
+        for page in Page::range(stack_start, stack_end) {
+            sprintln!("Mapping {:?}", &page);
+            self.map_to(page, flags)?.flush();
+        }
+
+        use serial::sprintln;
+
+        sprintln!(
+            "Allocated new thread stack {:?}",
+            Page::range(stack_start, stack_end)
+        );
+
+        Ok(StackBounds::new(
+            stack_start.start_address(),
+            stack_end.start_address(),
+        ))
     }
 
     pub fn map_to(
