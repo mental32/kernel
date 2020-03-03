@@ -11,7 +11,7 @@ iso    := ./build/kernel-$(arch).iso
 grub_cfg := $(common)/grub.cfg
 
 QEMU_MEM := 8M
-QEMU_ARGS := -m $(QEMU_MEM) -vga std -serial stdio -net nic,model=e1000 -machine q35
+QEMU_ARGS := -m $(QEMU_MEM) -nographic -net nic,model=e1000 -machine q35
 
 .PHONY: all kernel
 
@@ -27,7 +27,6 @@ $(iso): kernel $(grub_cfg)
 	cp $(grub_cfg) build/isofiles/boot/grub
 	$(GRUB_MKRESCUE) -o $(iso) build/isofiles
 	rm -r build/isofiles
-
 
 kernel:
 	mkdir -p build
