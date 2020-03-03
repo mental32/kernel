@@ -11,7 +11,7 @@ use x86_64::{
     structures::{
         gdt::{Descriptor, DescriptorFlags, SegmentSelector},
         idt::{HandlerFunc, InterruptDescriptorTable},
-        paging::{page_table::PageTableFlags},
+        paging::page_table::PageTableFlags,
         tss::TaskStateSegment,
     },
     VirtAddr,
@@ -22,7 +22,10 @@ use {bit_field::BitField, multiboot2::BootInformation};
 use serial::sprintln;
 
 use crate::{
-    dev::{apic, pic::{CHIP_8259, DEFAULT_PIC_SLAVE_OFFSET}},
+    dev::{
+        apic,
+        pic::{CHIP_8259, DEFAULT_PIC_SLAVE_OFFSET},
+    },
     gdt::ExposedGlobalDescriptorTable,
     isr,
     mm::{self, LockedHeap, MemoryManagerType, PhysFrameManager, MEMORY_MANAGER},
@@ -224,7 +227,7 @@ impl KernelStateObject {
             use crate::mm::pmm::{BitMap, INITIAL_PHYSFRAME_BITMAP, INITIAL_PHYSFRAME_BITMAP_SIZE};
             use core::sync::atomic::AtomicPtr;
 
-            let mut initial_bitmap = BitMap::new(
+            let initial_bitmap = BitMap::new(
                 AtomicPtr::new(&mut INITIAL_PHYSFRAME_BITMAP as *mut _ as *mut u8),
                 INITIAL_PHYSFRAME_BITMAP_SIZE.try_into().unwrap(),
             );
@@ -233,7 +236,7 @@ impl KernelStateObject {
             memory_manager.initialize(virtual_offset, PhysFrameManager::new(initial_bitmap, holes));
 
             pub const HEAP_START: u64 = 0x4444_4444_0000;
-            pub const HEAP_SIZE: u64 = 100 * 1024;
+            pub const HEAP_SIZE: u64 = 31 * 1024;
 
             // Allocate and map the heap.
             let flags = PageTableFlags::PRESENT | PageTableFlags::WRITABLE;

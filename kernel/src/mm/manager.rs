@@ -1,5 +1,5 @@
-use core::sync::atomic::{AtomicPtr, Ordering};
 use core::fmt::Debug;
+use core::sync::atomic::{AtomicPtr, AtomicU64, Ordering};
 
 use x86_64::{
     structures::paging::{
@@ -82,7 +82,9 @@ impl<F: FrameAllocator<Size4KiB> + FrameDeallocator<Size4KiB> + Debug> MemoryMan
         flags: PageTableFlags,
     ) -> Result<MapperFlush<Size4KiB>, MapToError<Size4KiB>> {
         let falloc = self.falloc.as_mut().unwrap();
-        let frame = falloc.allocate_frame().unwrap();
+        let frame = falloc
+            .allocate_frame()
+            .ok_or(MapToError::<Size4KiB>::FrameAllocationFailed)?;
 
         self.mapper
             .as_mut()
@@ -91,8 +93,8 @@ impl<F: FrameAllocator<Size4KiB> + FrameDeallocator<Size4KiB> + Debug> MemoryMan
     }
 }
 
-unsafe impl<F: FrameAllocator<Size4KiB> + FrameDeallocator<Size4KiB> + Debug> FrameAllocator<Size4KiB>
-    for MemoryManager<F>
+unsafe impl<F: FrameAllocator<Size4KiB> + FrameDeallocator<Size4KiB> + Debug>
+    FrameAllocator<Size4KiB> for MemoryManager<F>
 {
     fn allocate_frame(&mut self) -> Option<UnusedPhysFrame<Size4KiB>> {
         self.falloc.as_mut().unwrap().allocate_frame()

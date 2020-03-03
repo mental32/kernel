@@ -44,7 +44,9 @@ macro_rules! pt {
 #[macro_use]
 #[macro_export]
 macro_rules! mm {
-    () => ($crate::mm::MEMORY_MANAGER)
+    () => {
+        $crate::mm::MEMORY_MANAGER
+    };
 }
 
 #[cfg(feature = "standalone")]

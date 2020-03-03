@@ -1,9 +1,9 @@
-use core::{ptr, sync::atomic::{AtomicPtr, Ordering}};
+use core::{
+    ptr,
+    sync::atomic::{AtomicPtr, Ordering},
+};
 
-use spin::RwLock;
-use bit_field::{BitField, BitArray};
-
-use smallvec::{smallvec, SmallVec};
+use bit_field::BitField;
 
 use x86_64::{
     structures::paging::{
@@ -29,7 +29,7 @@ pub struct BitMap<T: Sized + BitOrAssign + BitAndAssign + From<u8>> {
     pub end: AtomicPtr<T>,
 }
 
-use core::ops::{BitOrAssign, BitAndAssign};
+use core::ops::{BitAndAssign, BitOrAssign};
 
 impl<T: Sized + BitOrAssign + BitAndAssign + From<u8> + BitField> BitMap<T> {
     pub fn new(start: AtomicPtr<T>, size: isize) -> Self {
@@ -46,8 +46,13 @@ impl<T: Sized + BitOrAssign + BitAndAssign + From<u8> + BitField> BitMap<T> {
         }
     }
 
-    fn access<F>(&mut self, index: usize, f: F) where F: FnOnce(*mut T, usize) {
-        if (index + (self.start.load(Ordering::SeqCst) as usize)) >= (self.end.load(Ordering::SeqCst) as usize) {
+    fn access<F>(&mut self, index: usize, f: F)
+    where
+        F: FnOnce(*mut T, usize),
+    {
+        if (index + (self.start.load(Ordering::SeqCst) as usize))
+            >= (self.end.load(Ordering::SeqCst) as usize)
+        {
             panic!("Attempted out of bounds write.")
         }
 
@@ -56,21 +61,26 @@ impl<T: Sized + BitOrAssign + BitAndAssign + From<u8> + BitField> BitMap<T> {
         use core::convert::TryInto;
 
         unsafe {
-            let ptr = self.start.load(Ordering::SeqCst).offset(byte.try_into().unwrap());
+            let ptr = self
+                .start
+                .load(Ordering::SeqCst)
+                .offset(byte.try_into().unwrap());
             f(ptr, bit);
         }
     }
 
+    #[inline]
     pub fn set(&mut self, index: usize) {
-        self.access(index, |ptr, bit| {
-            unsafe { (*ptr).set_bit(bit, true); }
+        self.access(index, |ptr, bit| unsafe {
+            (*ptr).set_bit(bit, true);
         })
     }
 
+    #[inline]
     pub fn clear(&mut self, index: usize) {
-        self.access(index, |ptr, bit| {
-            unsafe { (*ptr).set_bit(bit, false); }
-        })   
+        self.access(index, |ptr, bit| unsafe {
+            (*ptr).set_bit(bit, false);
+        })
     }
 
     pub fn bits(&mut self) -> impl Iterator<Item = bool> {
@@ -101,7 +111,6 @@ impl Bits {
 impl Iterator for Bits {
     type Item = bool;
 
-
     fn next(&mut self) -> Option<Self::Item> {
         let res = if (self.cursor / 8) >= self.stop {
             None
@@ -120,7 +129,8 @@ impl Iterator for Bits {
 }
 
 pub const INITIAL_PHYSFRAME_BITMAP_SIZE: usize = 128 * 1024;
-pub static mut INITIAL_PHYSFRAME_BITMAP: [u8; INITIAL_PHYSFRAME_BITMAP_SIZE] = [0u8; INITIAL_PHYSFRAME_BITMAP_SIZE];
+pub static mut INITIAL_PHYSFRAME_BITMAP: [u8; INITIAL_PHYSFRAME_BITMAP_SIZE] =
+    [0u8; INITIAL_PHYSFRAME_BITMAP_SIZE];
 
 #[derive(Debug)]
 pub struct PhysFrameManager {
@@ -140,11 +150,11 @@ impl PhysFrameManager {
 
     fn first_reusable_frame(&mut self) -> Option<(usize, UnusedPhysFrame<Size4KiB>)> {
         if self.reusable_count > 0 {
-            let base: u64 = 2;
-
-            for (index, bit) in self.frame_map.bits().enumerate().filter(|(_, bit)| *bit) {
+            for (index, _) in self.frame_map.bits().enumerate().filter(|(_, bit)| *bit) {
                 let frame = match self.frames.nth_area(index) {
-                    None => panic!("Frame marked free in bitmap but not available in physframe iterator."),
+                    None => panic!(
+                        "Frame marked free in bitmap but not available in physframe iterator."
+                    ),
                     Some(range) => page_range_to_unused_physical_frame(range)
                         .expect("Unable to cast page range to unused phys frame."),
                 };
@@ -164,7 +174,7 @@ unsafe impl FrameAllocator<Size4KiB> for PhysFrameManager {
             None => {
                 let (index, range) = self.frames.next().expect("Ran out of physical frames!");
 
-                unsafe { (index, page_range_to_unused_physical_frame(range).unwrap()) }
+                (index, page_range_to_unused_physical_frame(range).unwrap())
             }
         };
 

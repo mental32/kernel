@@ -9,7 +9,7 @@ use x86_64::{
         page::{PageRange, PageRangeInclusive},
         Page,
     },
-    PhysAddr, VirtAddr,
+    VirtAddr,
 };
 
 use super::{page_range_exclusive, page_range_inclusive};
