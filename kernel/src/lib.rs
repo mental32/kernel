@@ -27,7 +27,7 @@ mod dev;
 mod gdt;
 mod isr;
 mod mm;
-mod result;
+pub mod result;
 mod sched;
 mod state;
 // mod vfs;
