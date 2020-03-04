@@ -22,7 +22,7 @@ compile_error!("This kernel only supports the (AMD) x86_64 architecture.");
 
 extern crate alloc;
 
-// mod log;
+mod log;
 mod dev;
 mod gdt;
 mod isr;
@@ -32,6 +32,12 @@ mod sched;
 mod state;
 // mod vfs;
 
+use spin::Mutex;
+
+use log::SystemLogger;
+
+/// A static system logger for the kernel.
+pub static SYSTEM_LOGGER: Mutex<SystemLogger> = Mutex::new(SystemLogger::new());
 
 pub use result::*;
 

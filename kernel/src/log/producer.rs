@@ -1,25 +1,34 @@
 use core::fmt::Arguments;
 
-use serial::{SerialIO};
+use spin::Mutex;
+
+use serial::{SerialIO, GLOBAL_DEFAULT_SERIAL, sprint};
 use vga::VGAWriter;
 
 use crate::dev::vga::{VGAFramebuffer};
 
-pub trait LogProducer {
-    fn info(&mut self, _message: Arguments) {}
-    fn warn(&mut self, _message: Arguments) {}
-    fn error(&mut self, _message: Arguments) {}
-    fn fatal(&mut self, _message: Arguments) {}
+pub trait LogProducer: Sync + Send {
+    fn info(&self, _message: Arguments) {}
+    fn warn(&self, _message: Arguments) {}
+    fn error(&self, _message: Arguments) {}
+    fn fatal(&self, _message: Arguments) {}
 }
 
 impl LogProducer for SerialIO {
-    fn info(&mut self, message: Arguments) {
+    fn info(&self, message: Arguments) {
         self.print_args(format_args!("[INFO] {}\n", message));
     }
 }
 
-impl LogProducer for VGAWriter<'_, VGAFramebuffer<'_>> {
-    fn info(&mut self, message: Arguments) {
-        crate::vprint!(self, "{}", format_args!("[INFO] {}\n", message));
+impl LogProducer for GLOBAL_DEFAULT_SERIAL {
+    fn info(&self, message: Arguments) {
+        sprint!("{}", format_args!("[INFO] {}\n", message));
+    }
+}
+
+impl LogProducer for Mutex<VGAWriter<'_, VGAFramebuffer<'_>>> {
+    fn info(&self, message: Arguments) {
+        let mut handle = self.lock();
+        crate::vprint!(handle, "{}", format_args!("[INFO] {}\n", message));
     }
 }

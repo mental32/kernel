@@ -45,6 +45,15 @@ macro_rules! scheduler {
 pub unsafe extern "C" fn kmain(multiboot_addr: usize) -> ! {
     let boot_info = load(multiboot_addr);
 
+    // Initialize the system logger with a serial writer.
+
+    {
+        crate::SYSTEM_LOGGER
+            .try_lock()
+            .expect("Unable to initialize system logger")
+            .add_producer(&serial::GLOBAL_DEFAULT_SERIAL);
+    }
+
     // Setting everything up for regular work.
     //
     // The call to `KernelStateObject::prepare` will:

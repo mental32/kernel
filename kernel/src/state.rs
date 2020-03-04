@@ -183,7 +183,7 @@ impl KernelStateObject {
                         legacy_pics_supported = false;
                     }
 
-                    sprintln!("Finished initializing the APIC. ({:?}, {:?})", &apic, &lapic_eoi_ptr);
+                    info!("Finished enabling the APIC");
                 }
             } else {
                 sprintln!("NO APIC support detected!");
@@ -193,7 +193,7 @@ impl KernelStateObject {
             // TODO: Finish wrapping lai (https://github.com/mental32/lai-rs)
 
         } else {
-            sprintln!("No ACPI support detected!");
+            info!("No ACPI support detected!");
         }
 
         if legacy_pics_supported {
