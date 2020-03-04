@@ -3,7 +3,7 @@ use core::sync::atomic::{AtomicPtr, AtomicU64, Ordering};
 
 use x86_64::{
     structures::paging::{
-        mapper::{MapToError, Mapper, MapperFlush},
+        mapper::{MapToError, TranslateError, Mapper, MapperFlush},
         FrameAllocator, FrameDeallocator, OffsetPageTable, Page, PageTable, PageTableFlags,
         Size4KiB, UnusedPhysFrame,
     },
@@ -90,6 +90,16 @@ impl<F: FrameAllocator<Size4KiB> + FrameDeallocator<Size4KiB> + Debug> MemoryMan
             .as_mut()
             .unwrap()
             .map_to(page, frame, flags, falloc)
+    }
+
+    /// Check if a page is mapped.
+    pub fn page_is_mapped(&self, page: Page) -> bool {
+        match self.mapper.as_ref().expect("Unable to refrence our mapper").translate_page(page) {
+            Err(TranslateError::PageNotMapped) => false,
+            Err(TranslateError::InvalidFrameAddress(_)) => false,
+            _ => true,
+        }
+
     }
 }
 
