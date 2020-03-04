@@ -2,7 +2,7 @@ use core::{convert::TryInto, mem::size_of};
 
 use alloc::boxed::Box;
 
-use acpi::{search_for_rsdp_bios, AcpiError};
+use acpi::{search_for_rsdp_bios, AcpiError as InnerAcpiError};
 use x86_64::{
     instructions::{
         segmentation::set_cs,
@@ -19,17 +19,16 @@ use x86_64::{
 
 use {bit_field::BitField, multiboot2::BootInformation};
 
-use serial::sprintln;
-
 use crate::{
+    info,
     dev::{
-        apic,
+        apic::Lapic,
         pic::{CHIP_8259, DEFAULT_PIC_SLAVE_OFFSET},
     },
     gdt::ExposedGlobalDescriptorTable,
     isr,
     mm::{self, LockedHeap, MemoryManagerType, PhysFrameManager, MEMORY_MANAGER},
-    result::{KernelException, KernelResult},
+    result::{KernelException, KernelResult, AcpiError},
     GLOBAL_ALLOCATOR,
 };
 
@@ -151,12 +150,12 @@ impl KernelStateObject {
 
     /// Detect and use ACPI to load device drivers and initialize the APIC and
     /// AML interpreter.
-    unsafe fn load_device_drivers(&mut self) {
+    unsafe fn load_device_drivers(&mut self) -> KernelResult<()> {
         let maybe_acpi = {
             let acpi = match search_for_rsdp_bios(self) {
                 Ok(acpi) => Some(acpi),
                 Err(acpi_error) => match acpi_error {
-                    AcpiError::NoValidRsdp => None,
+                    InnerAcpiError::NoValidRsdp => None,
                     err => panic!("{:?}", err),
                 },
             };
@@ -164,19 +163,19 @@ impl KernelStateObject {
             acpi
         };
 
-        let apic_supported = apic::is_apic_supported();
-        let mut legacy_pics_supported = true;
 
+        let mut legacy_pics_supported = true;
         let mut legacy_pics_slave_offset = DEFAULT_PIC_SLAVE_OFFSET;
 
         if let Some(acpi) = maybe_acpi {
             // APIC/LAPIC initialization and setup
-            if apic_supported {
-                sprintln!("APIC support detected, proceeding to remap and mask PIT8259");
+            match Lapic::new(&acpi) {
+                Ok(mut apic) => {
+                    info!("APIC support detected!");
+                    apic.init()?;
 
-                if let Ok((apic, lapic_eoi_ptr)) = apic::initialize(&acpi) {
-                    if apic.also_has_legacy_pics {
-                        legacy_pics_slave_offset = 0xA0;
+                    if apic.inner.also_has_legacy_pics {
+                        info!("Proceeding to remap and mask legacy pics");
                         CHIP_8259.remap(0xA0, 0xA8);
                         CHIP_8259.mask_all();
                     } else {
@@ -185,13 +184,13 @@ impl KernelStateObject {
 
                     info!("Finished enabling the APIC");
                 }
-            } else {
-                sprintln!("NO APIC support detected!");
+
+                Err(KernelException::Acpi(AcpiError::ApicNotSupported)) => { info!("No APIC support detected!"); }
+                Err(why) => return Err(why)
             }
 
-            // AML interpreter instance
-            // TODO: Finish wrapping lai (https://github.com/mental32/lai-rs)
-
+        // AML interpreter instance
+        // TODO: Finish wrapping lai (https://github.com/mental32/lai-rs)
         } else {
             info!("No ACPI support detected!");
         }
@@ -199,6 +198,8 @@ impl KernelStateObject {
         if legacy_pics_supported {
             CHIP_8259.setup(legacy_pics_slave_offset, self);
         }
+
+        Ok(())
     }
 
     /// Prepare the kernel and host machine state.
@@ -258,7 +259,7 @@ impl KernelStateObject {
         self.load_tables();
 
         // Device drivers
-        self.load_device_drivers();
+        self.load_device_drivers().expect("Failed to load device drivers.");
 
         Ok(())
     }
