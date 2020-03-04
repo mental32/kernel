@@ -53,20 +53,27 @@ pub unsafe extern "C" fn kmain(multiboot_addr: usize) -> ! {
     // Setting everything up for regular work.
     //
     // The call to `KernelStateObject::prepare` will:
-    //  - Initialize the global allocator and memory manager
-    //  - Initialize the GDT & IDT
+    //  - Initialize the memory manager and global allocator
+    //  - Initialize and load the GDT & IDT
     //  - Load the appropriate code and tss selectors
     //  - Resize, remap or modify current [kernel] pages and setup a heap.
 
     {
-        let mut state = kernel!().lock();
+        let mut state = kernel!()
+            .try_lock()
+            .expect("Unable to lock the uninitialized kernel state.");
+
         state.prepare(&boot_info).unwrap();
     }
 
-    scheduler!()
-        .try_lock()
-        .expect("Unable to Initialize scheduler!")
-        .init();
+    // Initialize the scheduler for basic multitasking support.
+
+    {
+        scheduler!()
+            .try_lock()
+            .expect("Unable to Initialize scheduler!")
+            .init();
+    }
 
     interrupts::enable();
 
@@ -84,6 +91,8 @@ pub fn alloc_error_handler(layout: alloc::alloc::Layout) -> ! {
 #[panic_handler]
 fn panic(info: &core::panic::PanicInfo) -> ! {
     interrupts::disable();
+
+    // TODO: Handle thread panics
 
     sprintln!("{:?}", info);
 
