@@ -32,6 +32,23 @@ mod sched;
 mod state;
 // mod vfs;
 
+
+pub use result::*;
+
+/// A basic eum of access permissions: read only, write only and read/write.
+#[derive(Debug)]
+#[repr(u8)]
+pub enum AccessPermissions {
+    /// The item is read only.
+    ReadOnly = 0,
+
+    /// The item is write only.
+    WriteOnly,
+
+    /// The item can be read from and written to.
+    ReadWrite,
+}
+
 /// A macro used to quicky construct handles to ports.
 #[macro_use]
 #[macro_export]
