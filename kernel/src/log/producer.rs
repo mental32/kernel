@@ -2,10 +2,10 @@ use core::fmt::Arguments;
 
 use spin::Mutex;
 
-use serial::{SerialIO, GLOBAL_DEFAULT_SERIAL, sprint};
+use serial::{sprint, SerialIO, GLOBAL_DEFAULT_SERIAL};
 use vga::VGAWriter;
 
-use crate::dev::vga::{VGAFramebuffer};
+use crate::dev::vga::VGAFramebuffer;
 
 pub trait LogProducer: Sync + Send {
     fn info(&self, _message: Arguments) {}
@@ -28,7 +28,8 @@ impl LogProducer for GLOBAL_DEFAULT_SERIAL {
 
 impl LogProducer for Mutex<VGAWriter<'_, VGAFramebuffer<'_>>> {
     fn info(&self, message: Arguments) {
-        let mut handle = self.lock();
-        crate::vprint!(handle, "{}", format_args!("[INFO] {}\n", message));
+        use core::fmt::Write;
+
+        self.lock().write_fmt(format_args!("[INFO] {}\n", message));
     }
 }
