@@ -6,7 +6,12 @@ use {
 
 use serial::sprintln;
 
-use crate::{mm::LockedHeap, sched::Scheduler, state::KernelStateObject};
+use crate::{
+    info,
+    mm::LockedHeap,
+    sched::{KernelScheduler, Scheduler},
+    state::KernelStateObject,
+};
 
 /// Global allocator refrence.
 #[global_allocator]

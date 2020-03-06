@@ -41,8 +41,10 @@ impl Thread {
             memory_manager.allocate_thread_stack(stack_size)
         }?;
 
-        let mut stack = unsafe { Stack::new(stack_bounds.end()) };
-        unsafe { stack.set_up_for_entry_point(entry_point) };
+        unsafe {
+            let mut stack = Stack::new(stack_bounds.end());
+            stack.set_up_for_entry_point(entry_point);
+        }
 
         Ok(Self::new(stack.get_stack_pointer(), stack_bounds))
     }

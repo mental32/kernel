@@ -20,15 +20,14 @@ use x86_64::{
 use {bit_field::BitField, multiboot2::BootInformation};
 
 use crate::{
-    info,
     dev::{
         apic::Lapic,
         pic::{CHIP_8259, DEFAULT_PIC_SLAVE_OFFSET},
     },
     gdt::ExposedGlobalDescriptorTable,
-    isr,
+    info, isr,
     mm::{self, LockedHeap, MemoryManagerType, PhysFrameManager, MEMORY_MANAGER},
-    result::{KernelException, KernelResult, AcpiError},
+    result::{AcpiError, KernelException, KernelResult},
     GLOBAL_ALLOCATOR,
 };
 
@@ -91,7 +90,6 @@ impl KernelStateObject {
 
             heap_allocator: None,
             memory_manager: None,
-
             // devices: None,
         }
     }
@@ -259,7 +257,8 @@ impl KernelStateObject {
         self.load_tables();
 
         // Device drivers
-        self.load_device_drivers().expect("Failed to load device drivers.");
+        self.load_device_drivers()
+            .expect("Failed to load device drivers.");
 
         Ok(())
     }

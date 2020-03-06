@@ -10,7 +10,7 @@ pub enum KernelException {
     Acpi(AcpiError),
 
     /// Used as an exception to check if a page is already mapped.
-    PageAlreadyMapped
+    PageAlreadyMapped,
 }
 
 /// A ACPI error enum.
