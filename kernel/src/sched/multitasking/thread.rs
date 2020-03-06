@@ -41,12 +41,13 @@ impl Thread {
             memory_manager.allocate_thread_stack(stack_size)
         }?;
 
-        unsafe {
+        let thread = unsafe {
             let mut stack = Stack::new(stack_bounds.end());
             stack.set_up_for_entry_point(entry_point);
-        }
+            Self::new(stack.get_stack_pointer(), stack_bounds)
+        };
 
-        Ok(Self::new(stack.get_stack_pointer(), stack_bounds))
+        Ok(thread)
     }
 
     pub fn create_from_closure<F>(
