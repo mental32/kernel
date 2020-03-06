@@ -3,8 +3,8 @@
 /// A kernel exception blanket enum.
 #[derive(Debug)]
 pub enum KernelException {
-    /// Used when a function was called twice when it was not supposed to.
-    IllegalDoubleCall(&'static str),
+    /// Used when an initializer function was called more than once.
+    AlreadyInitialized(&'static str),
 
     /// Used when an `AcpiError` as occured.
     Acpi(AcpiError),

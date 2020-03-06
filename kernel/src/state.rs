@@ -205,7 +205,7 @@ impl KernelStateObject {
     /// Prepare the kernel and host machine state.
     pub unsafe fn prepare(&mut self, boot_info: &BootInformation) -> KernelResult<()> {
         if self.heap_allocator.is_some() {
-            return Err(KernelException::IllegalDoubleCall(
+            return Err(KernelException::AlreadyInitialized(
                 "Attempted to call KernelStateObject::prepare twice.",
             ));
         }
