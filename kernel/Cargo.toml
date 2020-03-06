@@ -14,7 +14,7 @@ pit825x = { path = "../drivers/pit825x" }
 serial = { path = "../drivers/serial" }
 vga = { path = "../drivers/vga" }
 # Other deps
-acpi = "0.6.0"
+acpi = { git = "https://github.com/mental32/acpi", branch = "mental32-changes" }
 volatile = "0.2.6"
 smallvec = "1.2.0"
 x86_64 = "0.9.2"
