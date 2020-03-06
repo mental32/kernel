@@ -161,7 +161,7 @@ impl KernelScheduler for RoundRobin {
     }
 
     fn spawn(&mut self, f: fn() -> !) -> Result<ThreadIdent, &'static str> {
-        let thread = Thread::create(f, 4).unwrap();
+        let thread = Thread::create_with_stack(f, 4).unwrap();
 
         let thread_id = thread.id();
 

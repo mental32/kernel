@@ -32,7 +32,7 @@ pub struct Thread {
 }
 
 impl Thread {
-    pub fn create(
+    pub fn create_with_stack(
         entry_point: fn() -> !,
         stack_size: u64,
     ) -> Result<Self, mapper::MapToError<Size4KiB>> {
