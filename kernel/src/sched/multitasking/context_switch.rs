@@ -1,6 +1,11 @@
 use super::thread::ThreadIdent;
 
-use crate::sched::{KernelScheduler, SwitchReason};
+use crate::{
+    sched::{KernelScheduler, SwitchReason},
+    scheduler,
+};
+
+use serial::sprintln;
 
 use alloc::boxed::Box;
 use core::mem;
@@ -13,14 +18,12 @@ pub unsafe fn context_switch_to(
     new_stack_pointer: VirtAddr,
     prev_thread_id: ThreadIdent,
     switch_reason: SwitchReason,
-    scheduler: &mut Scheduler,
 ) {
     asm!(
         "call asm_context_switch"
         :
-        : "{rdi}"(new_stack_pointer), "{rsi}"(prev_thread_id), "{rdx}"(switch_reason as u64) "{rcx}"(scheduler)
-        : "rax", "rbx", "rcx", "rdx", "rsi", "rdi", "rbp", "r8", "r9", "r10",
-        "r11", "r12", "r13", "r14", "r15", "rflags", "memory"
+        : "{rdi}"(new_stack_pointer), "{rsi}"(prev_thread_id), "{rdx}"(switch_reason as u64)
+        : "rax", "rbx", "rdx", "rcx", "rsi", "rdi", "rbp", "r8", "r9", "r10", "r11", "r12", "r13", "r14", "r15", "rflags", "memory"
         : "intel", "volatile"
     );
 }
@@ -49,13 +52,11 @@ pub extern "C" fn add_paused_thread(
     paused_stack_pointer: VirtAddr,
     paused_thread_id: ThreadIdent,
     switch_reason: SwitchReason,
-    scheduler: &mut Scheduler,
 ) {
-    scheduler.add_paused_thread(
-        paused_stack_pointer,
-        paused_thread_id,
-        switch_reason,
-    );
+    scheduler!()
+        .try_lock()
+        .expect("Unable to lock scheduler while adding paused thread!")
+        .add_paused_thread(paused_stack_pointer, paused_thread_id, switch_reason);
 }
 
 #[naked]

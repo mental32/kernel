@@ -11,7 +11,12 @@ use {
     serial::sprintln,
 };
 
-use crate::{scheduler, sched::{KernelScheduler, SwitchReason, context_switch}, pt, state::KernelStateObject};
+use crate::{
+    pt,
+    sched::{context_switch, KernelScheduler, SwitchReason},
+    scheduler,
+    state::KernelStateObject,
+};
 
 /// IRQ offset for the slave pic.
 pub const DEFAULT_PIC_SLAVE_OFFSET: u8 = 32;
@@ -70,24 +75,34 @@ mod controller_interrupt_handlers {
     use super::*;
 
     pub extern "x86-interrupt" fn timer_interrupt_handler(_stack_frame: &mut InterruptStackFrame) {
-        let mut scheduler = scheduler!().try_lock().expect("Interrupt scheduler deadlocked?");
+        use core::sync::atomic::{AtomicUsize, Ordering};
 
-        if let Some((next_stack_pointer, prev_thread_id)) = scheduler.schedule() {
-            unsafe {
-                context_switch::context_switch_to(
-                    next_stack_pointer,
-                    prev_thread_id,
-                    SwitchReason::Paused,
-                    &mut scheduler
-                )
-            };
-        }
+        static TIMER_TICK_COUNTER: AtomicUsize = AtomicUsize::new(0);
+
+        let next_task = if (TIMER_TICK_COUNTER.fetch_add(1, Ordering::SeqCst) / 1000) == 1 {
+            scheduler!()
+                .try_lock()
+                .expect("Interrupt scheduler deadlocked?")
+                .schedule()
+        } else {
+            None
+        };
 
         eoi!(
             DEFAULT_PIC_SLAVE_OFFSET,
             CHIP_8259.pic.lock(),
             InterruptIndex::Timer
         );
+
+        if let Some((next_stack_pointer, prev_thread_id)) = next_task {
+            unsafe {
+                context_switch::context_switch_to(
+                    next_stack_pointer,
+                    prev_thread_id,
+                    SwitchReason::Paused,
+                )
+            };
+        }
     }
 
     pub extern "x86-interrupt" fn keyboard_interrupt_handler(

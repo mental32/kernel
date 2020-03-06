@@ -13,6 +13,7 @@ use super::{
     },
     scheduler::{KernelScheduler, SwitchReason},
 };
+use crate::info;
 
 #[derive(Debug)]
 pub struct RoundRobin {
@@ -83,7 +84,7 @@ impl KernelScheduler for RoundRobin {
     fn synchronous_context_switch(&mut self, reason: SwitchReason) -> Result<(), ()> {
         match self.schedule() {
             Some((next_stack_pointer, prev_thread_id)) => unsafe {
-                context_switch::context_switch_to(next_stack_pointer, prev_thread_id, reason, self);
+                context_switch::context_switch_to(next_stack_pointer, prev_thread_id, reason);
                 Ok(())
             },
 
@@ -97,11 +98,6 @@ impl KernelScheduler for RoundRobin {
         paused_thread_id: ThreadIdent,
         switch_reason: SwitchReason,
     ) {
-        sprintln!(
-            "Adding paused thread {:?}",
-            (&paused_thread_id, &paused_stack_pointer, &switch_reason)
-        );
-
         let state = self.inner.as_mut().unwrap();
         let paused_thread = state
             .threads
@@ -139,31 +135,25 @@ impl KernelScheduler for RoundRobin {
     fn schedule(&mut self) -> Option<(VirtAddr, ThreadIdent)> {
         let state = self.inner.as_mut().unwrap();
 
-        let mut next_thread_id = state.next_thread();
+        let next_thread_id = state.next_thread().unwrap_or_else(|| {
+            state
+                .idle_thread_id
+                .expect("System idle thread is not active.")
+        });
 
-        sprintln!("{:?}", &next_thread_id);
+        let next_thread = state
+            .threads
+            .get_mut(&next_thread_id)
+            .expect("next thread does not exist");
 
-        if next_thread_id.is_none() && Some(state.current_thread_id) != state.idle_thread_id {
-            next_thread_id = state.idle_thread_id
-        }
+        let next_stack_pointer = next_thread
+            .stack_pointer()
+            .take()
+            .expect("paused thread has no stack pointer");
 
-        if let Some(next_id) = next_thread_id {
-            let next_thread = state
-                .threads
-                .get_mut(&next_id)
-                .expect("next thread does not exist");
+        let prev_thread_id = mem::replace(&mut state.current_thread_id, next_thread.id());
 
-            let next_stack_pointer = next_thread
-                .stack_pointer()
-                .take()
-                .expect("paused thread has no stack pointer");
-
-            let prev_thread_id = mem::replace(&mut state.current_thread_id, next_thread.id());
-
-            Some((next_stack_pointer, prev_thread_id))
-        } else {
-            None
-        }
+        Some((next_stack_pointer, prev_thread_id))
     }
 
     fn park(&mut self) -> Result<ThreadIdent, &'static str> {
