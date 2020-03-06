@@ -33,7 +33,7 @@ impl<'a> Lapic<'a> {
         Ok(Self { inner: apic })
     }
 
-    pub fn init(&mut self) -> KernelResult<()> {
+    pub unsafe fn init(&mut self) -> KernelResult<()> {
         let mut memory_manager = mm!()
             .try_lock()
             .expect("Unable to access the memory manager during APIC initialization.");
