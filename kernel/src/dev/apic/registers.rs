@@ -23,7 +23,7 @@ macro_rules! lapic_reg_read {
     }};
 }
 
-#[derive(Debug)]
+#[derive(Debug, Copy, Clone)]
 pub struct ApicRegister {
     offset: u64,
     perms: AccessPermissions,
@@ -31,20 +31,24 @@ pub struct ApicRegister {
 
 impl ApicRegister {
     pub const fn new(offset: u64, perms: AccessPermissions) -> Self {
-        Self {
-            offset,
-            perms
-        }
+        Self { offset, perms }
     }
 
     /// Attempt to read into the register.
     pub unsafe fn read(&self, lapic_address: Page) -> KernelResult<u32> {
-        Ok(lapic_reg_read!(lapic_address.start_address().as_u64(), self.offset))
+        Ok(lapic_reg_read!(
+            lapic_address.start_address().as_u64(),
+            self.offset
+        ))
     }
 
     /// Attempt to write into the register.
     pub unsafe fn write(&self, lapic_address: Page, data: u32) -> KernelResult<()> {
-        Ok(lapic_reg_write!(lapic_address.start_address().as_u64(), self.offset, data))
+        Ok(lapic_reg_write!(
+            lapic_address.start_address().as_u64(),
+            self.offset,
+            data
+        ))
     }
 }
 

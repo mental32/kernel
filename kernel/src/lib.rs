@@ -22,10 +22,10 @@ compile_error!("This kernel only supports the (AMD) x86_64 architecture.");
 
 extern crate alloc;
 
-mod log;
 mod dev;
 mod gdt;
 mod isr;
+mod log;
 mod mm;
 pub mod result;
 mod sched;
@@ -42,7 +42,7 @@ pub static SYSTEM_LOGGER: Mutex<SystemLogger> = Mutex::new(SystemLogger::new());
 pub use result::*;
 
 /// A basic eum of access permissions: read only, write only and read/write.
-#[derive(Debug)]
+#[derive(Debug, Copy, Clone)]
 #[repr(u8)]
 pub enum AccessPermissions {
     /// The item is read only.
