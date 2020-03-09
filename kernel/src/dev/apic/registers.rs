@@ -56,32 +56,32 @@ impl ApicRegister {
 // Volume 4, section 10, table 10-1
 
 macro_rules! reg {
-    ($name:ident, $offset:literal, $perm:ident) => {
+    ($offset:literal, $perm:ident, $name:ident) => {
         pub const $name: ApicRegister = ApicRegister::new($offset, AccessPermissions::$perm);
     };
 }
 
-reg!(LAPIC_ID, 0x20, ReadWrite);
-reg!(LAPIC_VERSION, 0x30, ReadOnly);
+reg!(0x20, ReadWrite, LAPIC_ID);
+reg!(0x30, ReadOnly, LAPIC_VERSION);
 // Registers [0x40..0x70] are marked reserved.
-reg!(TASK_PRIORITY, 0x80, ReadWrite);
-reg!(ARBITRATION_PRIORITY, 0x90, ReadOnly);
-reg!(PROCESSOR_PRIORITY, 0xA0, ReadOnly);
-reg!(EOI, 0xB0, WriteOnly);
-reg!(REMOTE_READ, 0xC0, ReadOnly);
-reg!(LOGICAL_DESTINATION, 0xD0, ReadWrite);
-reg!(DEST_FMT, 0xE0, ReadWrite);
-reg!(SPURRIOUS_INTERRUPT_VECTOR, 0xF0, ReadWrite);
+reg!(0x80, ReadWrite, TASK_PRIORITY);
+reg!(0x90, ReadOnly, ARBITRATION_PRIORITY);
+reg!(0xA0, ReadOnly, PROCESSOR_PRIORITY);
+reg!(0xB0, WriteOnly, EOI);
+reg!(0xC0, ReadOnly, REMOTE_READ);
+reg!(0xD0, ReadWrite, LOGICAL_DESTINATION);
+reg!(0xE0, ReadWrite, DEST_FMT);
+reg!(0xF0, ReadWrite, SPURRIOUS_INTERRUPT_VECTOR);
 // Bunch of in service registers (ISRs) and trigger mode registers (TMRs)
 // TODO: Investigate bits.
-reg!(ERROR_STATUS, 0x280, ReadOnly);
-reg!(LVT_CMCI, 0x2F0, ReadWrite);
-reg!(LVT_TIMER, 0x320, ReadWrite);
-reg!(LVT_THERMAL_SENSOR, 0x330, ReadWrite);
-reg!(LVT_PERF_MONITORING_COUNTERS, 0x340, ReadWrite);
-reg!(LVT_LINT0, 0x350, ReadWrite);
-reg!(LVT_LINT1, 0x360, ReadWrite);
-reg!(LVT_ERROR, 0x370, ReadWrite);
-reg!(INITAL_COUNTER, 0x380, ReadWrite);
-reg!(CURRENT_COUNT, 0x390, ReadOnly);
-reg!(DIVIDE_CONFIGURE, 0x3E0, ReadWrite);
+reg!(0x280, ReadOnly, ERROR_STATUS);
+reg!(0x2F0, ReadWrite, LVT_CMCI);
+reg!(0x320, ReadWrite, LVT_TIMER);
+reg!(0x330, ReadWrite, LVT_THERMAL_SENSOR);
+reg!(0x340, ReadWrite, LVT_PERF_MONITORING_COUNTERS);
+reg!(0x350, ReadWrite, LVT_LINT0);
+reg!(0x360, ReadWrite, LVT_LINT1);
+reg!(0x370, ReadWrite, LVT_ERROR);
+reg!(0x380, ReadWrite, INITAL_COUNTER);
+reg!(0x390, ReadOnly, CURRENT_COUNT);
+reg!(0x3E0, ReadWrite, DIVIDE_CONFIGURE);
