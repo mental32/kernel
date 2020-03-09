@@ -17,6 +17,16 @@ macro_rules! log_handler {
                 }
             }
         }
+
+        paste::item! {
+            pub fn [<fmt_ $name>](&mut self, msg: core::fmt::Arguments) {
+                if let Some(iterable) = self.writers.as_mut() {
+                    for writer in iterable.iter_mut() {
+                        writer.write().$name(format_args!("{}", msg));
+                    }
+                }
+            }
+        }
     };
 }
 
