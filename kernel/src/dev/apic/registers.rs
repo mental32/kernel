@@ -8,10 +8,7 @@ macro_rules! lapic_reg_write {
         let reg: u64 = $reg;
 
         let target = (madt + reg) as *mut u32;
-
-        unsafe {
-            (*target) = $data;
-        }
+        (*target) = $data;
     }};
 }
 
