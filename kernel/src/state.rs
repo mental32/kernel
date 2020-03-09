@@ -22,6 +22,7 @@ use {bit_field::BitField, multiboot2::BootInformation};
 use crate::{
     dev::{
         apic::Lapic,
+        pci::{self, PciEnumeration},
         pic::{CHIP_8259, DEFAULT_PIC_SLAVE_OFFSET},
     },
     gdt::ExposedGlobalDescriptorTable,
@@ -39,7 +40,7 @@ struct Selectors {
 /// A struct that journals the kernels state.
 pub struct KernelStateObject {
     // Hardware
-    // devices: Option<()>,
+    pci_devices: Option<PciEnumeration>,
     // Structures
     heap_allocator: Option<&'static LockedHeap>,
     memory_manager: Option<&'static MemoryManagerType>,
@@ -90,7 +91,7 @@ impl KernelStateObject {
 
             heap_allocator: None,
             memory_manager: None,
-            // devices: None,
+            pci_devices: None,
         }
     }
 
@@ -161,9 +162,7 @@ impl KernelStateObject {
             acpi
         };
 
-
         let mut legacy_pics_supported = true;
-        let mut legacy_pics_slave_offset = DEFAULT_PIC_SLAVE_OFFSET;
 
         if let Some(acpi) = maybe_acpi {
             // APIC/LAPIC initialization and setup
@@ -183,18 +182,40 @@ impl KernelStateObject {
                     info!("Finished enabling the APIC");
                 }
 
-                Err(KernelException::Acpi(AcpiError::ApicNotSupported)) => { info!("No APIC support detected!"); }
-                Err(why) => return Err(why)
+                Err(KernelException::Acpi(AcpiError::ApicNotSupported)) => {
+                    info!("No APIC support detected!");
+                }
+
+                Err(why) => return Err(why),
             }
 
-        // AML interpreter instance
-        // TODO: Finish wrapping lai (https://github.com/mental32/lai-rs)
+            // AML interpreter instance
+            // TODO: Finish wrapping lai (https://github.com/mental32/lai-rs)
+
+            if let Some(pci_config_regions) = acpi.pci_config_regions {
+                info!("PCI-E configuration regions detected.");
+
+                let mut pci_enumeration = PciEnumeration::new();
+
+                info!("Attempting a PCI-E device enumeration.");
+
+                for device in pci::brute_force_enumerate(&pci_config_regions) {
+                    info!("  PCI-E DEVICE => {:?}", &device);
+                    pci_enumeration.register(device);
+                }
+
+                info!("Completed PCI-E device enumeration: {:?}", &pci_enumeration);
+
+                self.pci_devices = Some(pci_enumeration);
+            } else {
+                info!("No PCI-E configuration regions detected.");
+            }
         } else {
             info!("No ACPI support detected!");
         }
 
         if legacy_pics_supported {
-            CHIP_8259.setup(legacy_pics_slave_offset, self);
+            CHIP_8259.setup(DEFAULT_PIC_SLAVE_OFFSET, self);
         }
 
         Ok(())
