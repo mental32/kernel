@@ -3,9 +3,9 @@ use core::sync::atomic::{AtomicPtr, AtomicU64, Ordering};
 
 use x86_64::{
     structures::paging::{
-        mapper::{MapToError, Mapper, MapperFlush, TranslateError},
+        mapper::{MapToError, Mapper, MapperFlush, TranslateError, UnmapError},
         FrameAllocator, FrameDeallocator, OffsetPageTable, Page, PageTable, PageTableFlags,
-        Size4KiB, UnusedPhysFrame,
+        PhysFrame, Size4KiB, UnusedPhysFrame,
     },
     VirtAddr,
 };
@@ -80,6 +80,16 @@ impl<F: FrameAllocator<Size4KiB> + FrameDeallocator<Size4KiB> + Debug> MemoryMan
             .as_mut()
             .unwrap()
             .map_to(page, frame, flags, falloc)
+    }
+
+    pub fn unmap(&mut self, page: Page<Size4KiB>) -> Result<MapperFlush<Size4KiB>, UnmapError> {
+        let mut falloc = self
+            .falloc
+            .as_mut()
+            .expect("Unable to use physical frame allocator");
+        let (frame, mflush) = self.mapper.as_mut().unwrap().unmap(page)?;
+        falloc.deallocate_frame(unsafe { UnusedPhysFrame::new(frame) });
+        Ok(mflush)
     }
 
     /// Check if a page is mapped.

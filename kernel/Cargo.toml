@@ -23,6 +23,7 @@ spin = "0.5.2"
 multiboot2 = "0.8.1"
 bit_field = "0.10.0"
 bitflags = "1.2.1"
+paste = "0.1.7"
 pc-keyboard = "0.5.0"
 goblin = { version = "0.2.0", features = ["elf64", "elf32"], default-features = false }
 lazy_static = { version = "1.4.0", features = ["spin_no_std"] }
