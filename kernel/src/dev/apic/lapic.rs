@@ -17,13 +17,6 @@ pub struct Lapic<'a> {
 }
 
 impl<'a> Lapic<'a> {
-    /// Check if the APIC is supported on this system via CPUID.
-    #[inline]
-    pub fn is_supported() -> bool {
-        let cpuid = raw_cpuid::CpuId::new();
-        *&cpuid.get_feature_info().unwrap().has_apic()
-    }
-
     pub fn new(acpi: &'a Acpi) -> KernelResult<Lapic> {
         let apic = match &acpi.interrupt_model {
             Some(InterruptModel::Apic(apic)) => apic,
