@@ -82,7 +82,7 @@ macro_rules! sprint {
     });
 
     ($handle:ident, $($arg:tt)*) => ({
-        let mut handle: SerialIO = $handle;
+        let mut handle: &mut SerialIO = $handle;
         handle.print_args($($arg)*);
     })
 }
