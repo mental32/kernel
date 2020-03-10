@@ -25,7 +25,7 @@ bit_field = "0.10.0"
 bitflags = "1.2.1"
 paste = "0.1.7"
 pc-keyboard = "0.5.0"
-goblin = { version = "0.2.0", features = ["elf64", "elf32"], default-features = false }
+goblin = { version = "0.2.0", features = ["elf64", "elf32"], default-features = false, optional = true}
 lazy_static = { version = "1.4.0", features = ["spin_no_std"] }
 linked_list_allocator = { version = "0.6.6", optional = true }
 
