@@ -17,20 +17,18 @@ use x86_64::{
     VirtAddr,
 };
 
-use {bit_field::BitField, multiboot2::BootInformation};
+use bit_field::BitField;
+use multiboot2::BootInformation;
 
-use crate::{
-    dev::{
-        apic::Lapic,
-        pci::{self, PciEnumeration},
-        pic::{CHIP_8259, DEFAULT_PIC_SLAVE_OFFSET},
-    },
-    gdt::ExposedGlobalDescriptorTable,
-    info, isr,
-    mm::{self, LockedHeap, MemoryManagerType, PhysFrameManager, MEMORY_MANAGER},
-    result::{AcpiError, KernelException, KernelResult},
-    GLOBAL_ALLOCATOR,
+use crate::dev::{
+    apic::{self, Lapic},
+    pci::{self, PciEnumeration},
+    pic::{CHIP_8259, DEFAULT_PIC_SLAVE_OFFSET},
 };
+use crate::gdt::ExposedGlobalDescriptorTable;
+use crate::mm::{self, LockedHeap, MemoryManagerType, PhysFrameManager, MEMORY_MANAGER};
+use crate::result::{AcpiError, KernelException, KernelResult};
+use crate::{info, isr, smp, GLOBAL_ALLOCATOR};
 
 struct Selectors {
     code_selector: Option<SegmentSelector>,
