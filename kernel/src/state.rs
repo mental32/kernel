@@ -2,7 +2,7 @@ use core::{convert::TryInto, mem::size_of};
 
 use alloc::boxed::Box;
 
-use acpi::{search_for_rsdp_bios, AcpiError as InnerAcpiError};
+use acpi::{search_for_rsdp_bios, AcpiError as InnerAcpiError, InterruptModel, ProcessorState};
 use x86_64::{
     instructions::{
         segmentation::set_cs,
@@ -163,46 +163,84 @@ impl KernelStateObject {
         let mut legacy_pics_supported = true;
 
         if let Some(acpi) = maybe_acpi {
-            // APIC/LAPIC initialization and setup
-            match Lapic::new(&acpi) {
-                Ok(mut apic) => {
-                    info!("APIC support detected!");
-                    apic.init()?;
+            let bsp = acpi.boot_processor.expect("No boot processor detected?!");
 
-                    if apic.inner.also_has_legacy_pics {
+            info!("ACPI says BSP is: {:?}", bsp);
+            assert!(
+                !bsp.is_ap,
+                "Bootstrap processor marked as application processor!"
+            );
+
+            let model = acpi.interrupt_model.expect("No interrupt model detected!");
+
+            // APIC/LAPIC initialization and setup
+            match model {
+                InterruptModel::Apic(apic) => {
+                    info!("APIC detected!");
+
+                    if !apic.also_has_legacy_pics {
+                        info!("APIC says legacy PICS are NOT supported!");
+                        legacy_pics_supported = false;
+                    } else {
                         info!("Proceeding to remap and mask legacy pics");
                         CHIP_8259.remap(0xA0, 0xA8);
                         CHIP_8259.mask_all();
-                    } else {
-                        legacy_pics_supported = false;
                     }
 
-                    info!("Finished enabling the APIC");
+                    info!("APIC initialization for BSP");
+                    apic::init_processor(bsp, &apic);
+
+                    for ap in acpi.application_processors {
+                        info!(
+                            "Processing AP => (processor_uid: {}, lapic_id: {})",
+                            ap.processor_uid, ap.local_apic_id
+                        );
+
+                        match ap.state {
+                            ProcessorState::Disabled => {
+                                info!("  AP marked disabled! skipping... ({:?})", ap)
+                            }
+
+                            ProcessorState::Running => {
+                                panic!("Processor was running during SMP initialization?! {:?}", ap)
+                            }
+
+                            ProcessorState::WaitingForSipi => {
+                                info!("  [1/2] Attempting to apic init AP");
+                                apic::init_processor(ap, &apic)
+                                    .expect("Unable to apic init application processor");
+
+                                info!("  [2/2] Attempting SIPI to AP");
+                                smp::sipi(ap).expect("Unable to complete SIPI for an AP");
+                            }
+                        }
+                    }
                 }
 
-                Err(KernelException::Acpi(AcpiError::ApicNotSupported)) => {
-                    info!("No APIC support detected!");
-                }
-
-                Err(why) => return Err(why),
+                InterruptModel::Pic => info!("PIC detected! (Are we on a legacy system?)"),
+                _ => panic!("Unknown interrupt model was reported!"),
             }
 
             // AML interpreter instance
             // TODO: Finish wrapping lai (https://github.com/mental32/lai-rs)
+            info!("AML support not implemented yet!");
 
             if let Some(pci_config_regions) = acpi.pci_config_regions {
                 info!("PCI-E configuration regions detected.");
 
                 let mut pci_enumeration = PciEnumeration::new();
 
-                info!("Attempting a PCI-E device enumeration.");
+                info!("Attempting a PCI device enumeration.");
+                pci::cam::brute_force_enumerate(&mut pci_enumeration);
 
-                for device in pci::brute_force_enumerate(&pci_config_regions) {
-                    info!("  PCI-E DEVICE => {:?}", &device);
-                    pci_enumeration.register(device);
+                for device in &pci_enumeration.devices {
+                    info!("  PCI DEVICE => {:?}", &device);
                 }
 
-                info!("Completed PCI-E device enumeration: {:?}", &pci_enumeration);
+                info!(
+                    "Completed PCI device enumeration with {:?} device(s)",
+                    &pci_enumeration.devices.len()
+                );
 
                 self.pci_devices = Some(pci_enumeration);
             } else {
