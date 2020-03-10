@@ -34,18 +34,18 @@ impl VGACursor {
 
     /// Enable the cursor by writing to some ports.
     pub fn enable(&mut self, start: u8, end: u8) {
-        pt!(0x3DA).write(0x0A);
+        // pt!(0x3DA).write(0x0A);
 
-        let mut res = pt!(0x3D5).read();
+        // let mut res = pt!(0x3D5).read();
 
-        pt!(0x3D5).write((res & 0xC0) | start);
+        // pt!(0x3D5).write((res & 0xC0) | start);
 
-        pt!(0x3DA).write(0x0B);
+        // pt!(0x3DA).write(0x0B);
 
-        res = pt!(0x3D5).read();
-        pt!(0x3D5).write((res & 0xE0) | end);
+        // res = pt!(0x3D5).read();
+        // pt!(0x3D5).write((res & 0xE0) | end);
 
-        self.enabled = true;
+        // self.enabled = true;
     }
 
     /// Disable the cursor.
@@ -67,7 +67,7 @@ impl VGACursor {
         pt!(0x3D5).write(pos & 0xFF);
 
         pt!(0x3DA).write(0x0E);
-        pt!(0x3D5).write((pos >> 8) & 0xFF);
+        // pt!(0x3D5).write((pos >> 8) & 0xFF);
 
         Ok(())
     }
