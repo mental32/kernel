@@ -1,6 +1,6 @@
 use core::ptr::NonNull;
 
-use alloc::alloc::{AllocRef, AllocErr, Layout};
+use alloc::alloc::{AllocErr, AllocRef, Layout};
 
 use super::arena::Arena;
 
@@ -25,11 +25,11 @@ impl Heap {
 }
 
 unsafe impl AllocRef for Heap {
-    unsafe fn alloc(&mut self, layout: Layout) -> Result<NonNull<u8>, AllocErr> {
+    unsafe fn alloc(&mut self, layout: Layout) -> Result<(NonNull<u8>, usize), AllocErr> {
         let head = &mut self.head;
 
         if let Ok(addr) = head.alloc(layout) {
-            return Ok(addr);
+            return Ok((addr, layout.size()));
         }
 
         let mut neighbour = head.neighbour.as_mut();
@@ -42,7 +42,7 @@ unsafe impl AllocRef for Heap {
             let res = arena.alloc(layout);
 
             if let Ok(addr) = res {
-                return Ok(addr);
+                return Ok((addr, layout.size()));
             }
 
             neighbour = arena.neighbour.as_mut();
