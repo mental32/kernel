@@ -32,7 +32,7 @@ pub mod result;
 mod sched;
 mod smp;
 mod state;
-mod vifs;
+mod vfs;
 
 use spin::Mutex;
 
