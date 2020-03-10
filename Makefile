@@ -11,7 +11,8 @@ iso    := ./build/kernel-$(arch).iso
 grub_cfg := $(common)/grub.cfg
 
 QEMU_MEM := 8M
-QEMU_ARGS := -m $(QEMU_MEM) -nographic -net nic,model=e1000 -machine q35
+QEMU_SMP := 4
+QEMU_ARGS := -m $(QEMU_MEM) -smp $(QEMU_SMP) -nographic -net nic,model=e1000 -machine q35
 
 .PHONY: all kernel
 
