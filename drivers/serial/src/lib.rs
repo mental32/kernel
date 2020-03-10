@@ -35,14 +35,18 @@ use lazy_static::lazy_static;
 /// Default serial io port for x86 systems.
 pub const DEAFULT_SERIAL_IO_PORT: u16 = 0x3F8;
 
-
 /// A newtype that represents a locked serial port.
 pub struct SerialIO(Mutex<SerialPort>);
 
 impl SerialIO {
+    /// Get a new uninitialized SerialIO port.
+    pub const fn new(port: u16) -> Self {
+        Self(Mutex::new(unsafe { SerialPort::new(port) }))
+    }
+
     /// Get a new initialized SerialIO port.
-    pub fn new() -> Self {
-        let mut port = unsafe { SerialPort::new(DEAFULT_SERIAL_IO_PORT) };
+    pub fn ready(port: u16) -> Self {
+        let mut port = unsafe { SerialPort::new(port) };
         port.init();
         Self(Mutex::new(port))
     }
@@ -58,10 +62,9 @@ impl SerialIO {
 lazy_static! {
     /// Global static refrence to a ``Mutex<SerialPort>`` using the ``DEAFULT_SERIAL_IO_PORT`` port.
     pub static ref GLOBAL_DEFAULT_SERIAL: SerialIO = {
-        SerialIO::new()
+        SerialIO::ready(DEAFULT_SERIAL_IO_PORT)
     };
 }
-
 
 /// Emit some data without a newline.
 #[macro_export]
@@ -83,7 +86,6 @@ macro_rules! sprint {
         handle.print_args($($arg)*);
     })
 }
-
 
 /// Emit some data with a newline.
 #[macro_export]
