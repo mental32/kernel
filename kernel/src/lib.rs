@@ -27,10 +27,12 @@ mod gdt;
 mod isr;
 mod log;
 mod mm;
+mod net;
 pub mod result;
 mod sched;
+mod smp;
 mod state;
-// mod vfs;
+mod vifs;
 
 use spin::Mutex;
 
