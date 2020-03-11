@@ -7,9 +7,9 @@
 //! software interfaces, are maintained, whereas its parallel bus
 //! implementation is replaced by a highly scalable, fully serial interface.
 
+pub mod cam;
 mod device;
 mod error;
-pub mod cam;
 // pub mod ecam;
 
 use alloc::{vec, vec::Vec};
@@ -18,7 +18,7 @@ pub use device::PciDevice;
 
 #[derive(Debug)]
 pub struct PciEnumeration {
-    pub devices: Vec<PciDevice>,
+    pub devices: Vec<cam::Device>,
 }
 
 impl PciEnumeration {
@@ -26,11 +26,10 @@ impl PciEnumeration {
         Self { devices: vec![] }
     }
 
-    pub fn register(&mut self, device: PciDevice) {
+    pub fn register(&mut self, device: cam::Device) {
         self.devices.push(device);
     }
 }
-
 
 pub const MAX_FUNCTION: usize = 8;
 pub const MAX_DEVICE: usize = 32;

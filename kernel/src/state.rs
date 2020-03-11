@@ -38,7 +38,7 @@ struct Selectors {
 /// A struct that journals the kernels state.
 pub struct KernelStateObject {
     // Hardware
-    pci_devices: Option<PciEnumeration>,
+    // pci_devices: Option<PciEnumeration>,
     // Structures
     heap_allocator: Option<&'static LockedHeap>,
     memory_manager: Option<&'static MemoryManagerType>,
@@ -89,7 +89,7 @@ impl KernelStateObject {
 
             heap_allocator: None,
             memory_manager: None,
-            pci_devices: None,
+            // pci_devices: None,
         }
     }
 
@@ -242,7 +242,7 @@ impl KernelStateObject {
                     &pci_enumeration.devices.len()
                 );
 
-                self.pci_devices = Some(pci_enumeration);
+            // self.pci_devices = Some(pci_enumeration);
             } else {
                 info!("No PCI-E configuration regions detected.");
             }
