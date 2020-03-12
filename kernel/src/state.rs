@@ -26,7 +26,9 @@ use crate::dev::{
     pic::{CHIP_8259, DEFAULT_PIC_SLAVE_OFFSET},
 };
 use crate::gdt::ExposedGlobalDescriptorTable;
-use crate::mm::{self, LockedHeap, MemoryManagerType, PhysFrameManager, MEMORY_MANAGER};
+use crate::mm::{
+    self, LockedHeap, MemoryManagerType, PhysFrameManager, HEAP_SIZE, HEAP_START, MEMORY_MANAGER,
+};
 use crate::result::{AcpiError, KernelException, KernelResult};
 use crate::{info, isr, smp, GLOBAL_ALLOCATOR};
 
@@ -223,7 +225,8 @@ impl KernelStateObject {
 
             // AML interpreter instance
             // TODO: Finish wrapping lai (https://github.com/mental32/lai-rs)
-            info!("AML support not implemented yet!");
+            info!("AML: DSDT: {:?}", &acpi.dsdt);
+            info!("AML: SSDTs: {:?}", &acpi.ssdts);
 
             if let Some(pci_config_regions) = acpi.pci_config_regions {
                 info!("PCI-E configuration regions detected.");
@@ -265,10 +268,16 @@ impl KernelStateObject {
             ));
         }
 
+        info!("Beginning kernel boot...");
+
         self.heap_allocator = Some(&GLOBAL_ALLOCATOR);
+        info!("Kernel heap => {:?}", &GLOBAL_ALLOCATOR);
+
         self.memory_manager = Some(&MEMORY_MANAGER);
+        info!("Kernel MM => {:?}", &MEMORY_MANAGER);
 
         // Initialize the memory manager.
+        info!("Initializing memory managent subsystems.");
         {
             let mut memory_manager = self
                 .memory_manager
@@ -293,11 +302,18 @@ impl KernelStateObject {
 
             info!("Initialized VMM & PMM");
 
+            info!("Allocating heap space...");
             // Allocate and map the heap.
             let flags = PageTableFlags::PRESENT | PageTableFlags::WRITABLE;
             for page in mm::page_range_inclusive(HEAP_START, HEAP_START + HEAP_SIZE) {
+                info!("  Heap page: {:?}", page);
                 memory_manager.map_to(page, flags).unwrap().flush();
             }
+
+            info!(
+                "Informing the heap of its initial space start=0x{:x?} size=0x{:x?}",
+                HEAP_START, HEAP_SIZE
+            );
 
             self.heap_allocator
                 .unwrap()
