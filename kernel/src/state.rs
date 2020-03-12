@@ -228,6 +228,17 @@ impl KernelStateObject {
             info!("AML: DSDT: {:?}", &acpi.dsdt);
             info!("AML: SSDTs: {:?}", &acpi.ssdts);
 
+            let mut ctx = aml::AmlContext::new();
+            if let Some(dsdt) = &acpi.dsdt {
+                ctx.parse_table(core::slice::from_raw_parts(
+                    dsdt.address as *const u8,
+                    dsdt.length as usize,
+                ))
+                .expect("Yeah, something bad happened...");
+            }
+
+            info!("AML {:?}", &ctx);
+
             if let Some(pci_config_regions) = acpi.pci_config_regions {
                 info!("PCI-E configuration regions detected.");
 
