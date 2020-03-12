@@ -291,8 +291,7 @@ impl KernelStateObject {
             let virtual_offset = VirtAddr::new(0x00);
             memory_manager.initialize(virtual_offset, PhysFrameManager::new(initial_bitmap, holes));
 
-            pub const HEAP_START: u64 = 0x4444_4444_0000;
-            pub const HEAP_SIZE: u64 = 31 * 1024;
+            info!("Initialized VMM & PMM");
 
             // Allocate and map the heap.
             let flags = PageTableFlags::PRESENT | PageTableFlags::WRITABLE;

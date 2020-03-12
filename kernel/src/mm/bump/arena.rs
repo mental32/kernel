@@ -1,4 +1,6 @@
-use core::ptr::NonNull;
+use core::mem::size_of;
+use core::ptr::{null_mut, NonNull};
+use core::sync::atomic::{AtomicPtr, Ordering};
 
 use alloc::alloc::{AllocErr, Layout};
 
@@ -8,7 +10,7 @@ pub struct Arena {
     heap_end: usize,
     next: usize,
     allocations: usize,
-    pub neighbour: Option<&'static mut Arena>,
+    pub neighbour: AtomicPtr<Arena>,
 }
 
 fn align_up(addr: usize, align: usize) -> usize {
@@ -23,12 +25,17 @@ impl Arena {
             heap_end: 0,
             next: 0,
             allocations: 0,
-            neighbour: None,
+            neighbour: AtomicPtr::new(null_mut()),
         }
     }
 
     pub fn contains(&self, addr: usize) -> bool {
         ((self.heap_start)..(self.heap_end)).contains(&addr)
+    }
+
+    #[inline]
+    pub fn size(&self) -> usize {
+        self.heap_end - self.heap_start
     }
 
     /// Initializes the bump allocator with the given heap bounds.
@@ -38,7 +45,7 @@ impl Arena {
     pub unsafe fn init(&mut self, heap_start: usize, heap_size: usize) {
         self.heap_start = heap_start;
         self.heap_end = heap_start + heap_size;
-        self.next = heap_start;
+        self.next = heap_start + size_of::<Self>();
     }
 
     pub unsafe fn alloc(&mut self, layout: Layout) -> Result<NonNull<u8>, AllocErr> {
@@ -60,7 +67,7 @@ impl Arena {
     pub unsafe fn dealloc(&mut self, _ptr: NonNull<u8>, _layout: Layout) {
         self.allocations -= 1;
         if self.allocations == 0 {
-            self.next = self.heap_start;
+            self.next = self.heap_start + size_of::<Self>();
         }
     }
 }
