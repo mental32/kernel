@@ -61,11 +61,24 @@ that was the most obvious immediate use case visable to me.
     - [ ] VBE driver
        - [x] VGA Text mode framebuffer writer.
     - [ ] APIC
+       - [ ] LAPIC Timers
+       - [ ] IOAPIC configuration
+       - [ ] LAPIC LVT configuration
     - [ ] ACPI
+       - [ ] AML Interpreter
+       - [ ] ACPI Table parsing
     - [ ] RTC
+       - [ ] BIOS/UEFI calling capabilities
     - [ ] WASM
+       - [x] Multithreading
+       - [ ] Userland (Ring 3)
+       - [ ] The actual WASM interpreter
     - [ ] PCI(E)
+       - [x] PCI LB CAM
+       - [ ] PCIE ECAM
+       - [ ] PCI IRQ configurability
     - [ ] HPET
+       - [ ] APIC maybe??
 
 ## [Related projects](#Index)
 
