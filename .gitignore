@@ -11,6 +11,10 @@ Cargo.lock
 
 # Object artifacts
 *.o
+*.bin
+
+# Hidden directories
 
 /others/
 /build/
+_*/

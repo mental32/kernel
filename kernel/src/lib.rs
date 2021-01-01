@@ -1,81 +1,88 @@
+//! A small kernel written in Rust.
+
 #![no_std]
-#![forbid(missing_docs)]
-#![allow(unused_attributes)]
 #![feature(lang_items)]
-#![feature(abi_x86_interrupt)]
 #![feature(alloc_error_handler)]
-#![feature(allocator_api)]
-#![feature(const_fn)]
-#![feature(const_mut_refs)]
-#![feature(never_type)]
-#![feature(asm)]
-#![feature(global_asm)]
-#![feature(raw)]
-#![feature(naked_functions)]
-#![feature(option_expect_none)]
+#![feature(type_ascription)]
+#![feature(llvm_asm)]
+#![feature(maybe_uninit_extra)]
 
-//! A muggle blood kernel written in Rust, C and Haskell, with an embedded
-//! WASM runtime.
+use alloc::boxed::Box;
+use alloc::format;
+use alloc::string::ToString;
 
-#[cfg(not(target_arch = "x86_64"))]
-compile_error!("This kernel only supports the (AMD) x86_64 architecture.");
+use core::{mem::MaybeUninit, panic};
 
 extern crate alloc;
 
-mod dev;
-mod gdt;
-mod isr;
-mod log;
-mod mm;
-mod net;
-pub mod result;
-mod sched;
-mod smp;
-mod state;
-mod vfs;
+mod acpi;
+mod heap;
+mod pci;
 
-use spin::Mutex;
+#[macros::entry]
+unsafe fn kmain() {
+    // -- ACPI
 
-use log::SystemLogger;
+    let tables = ::acpi::AcpiTables::search_for_rsdp_bios(self::acpi::AcpiPassthrough)
+        .expect("Missing ACPI RSDP...");
 
-/// A static system logger for the kernel.
-pub static SYSTEM_LOGGER: Mutex<SystemLogger> = Mutex::new(SystemLogger::new());
+    if let Some(dsdt) = &tables.dsdt {
+        log::info!("(ACPI) DSDT {:?}", dsdt);
 
-pub use result::*;
+        let slice = core::slice::from_raw_parts(dsdt.address as *mut _, dsdt.length as usize);
 
-/// A basic eum of access permissions: read only, write only and read/write.
-#[derive(Debug, Copy, Clone)]
-#[repr(u8)]
-pub enum AccessPermissions {
-    /// The item is read only.
-    ReadOnly = 0,
+        ::aml::AmlContext::new(
+            Box::new(self::acpi::aml::AmlHandler),
+            true,
+            ::aml::DebugVerbosity::All,
+        )
+        .parse_table(slice)
+        .unwrap();
 
-    /// The item is write only.
-    WriteOnly,
+        unreachable!()
+    }
 
-    /// The item can be read from and written to.
-    ReadWrite,
+    let info = tables
+        .platform_info()
+        .expect("Failed to construct PlatformInfo (FADT/MADT missing?)");
+
+    let pinfo = info
+        .processor_info
+        .expect("Missing processor information...");
+
+    log::info!("(ACPI) Boot processor is: {:#?}", pinfo.boot_processor);
+
+    for ap in pinfo.application_processors {
+        log::info!("    -> {:?}", ap);
+    }
+
+    // -- PCI
+
+    log::info!("(PCI Local Bus) Starting enumeration...");
+
+    let ports = pci::PciPorts::new();
+
+    for device in pci::enumerate(&ports) {
+        let (vendor_id, device_id) = device.id(&ports);
+
+        let vendor_name = match pci::vendor_name(vendor_id) {
+            Some(name) => format!("{:?} ({:#x})", name, vendor_id),
+            None => format!("{:#x}", vendor_id),
+        };
+
+        let device_name = match pci::device_name(vendor_id, device_id) {
+            Some(name) => format!("{:?} ({:#x})", name, device_id),
+            None => format!("{:#x}", device_id),
+        };
+
+        log::info!(
+            "\tVendor: {}\n\tDevice: {}\n\tSupported: {:#010b}\n\tBars: {:#?}",
+            vendor_name,
+            device_name,
+            device.supported_fns(&ports),
+            device.bars(&ports).iter().filter(|bar| **bar != 0).count()
+        );
+    }
+
+    log::info!("(PCI Local Bus) Completed enumeration!");
 }
-
-/// A macro used to quicky construct handles to ports.
-#[macro_use]
-#[macro_export]
-macro_rules! pt {
-    ($ln:expr) => { Port::<u8>::new($ln) };
-    ($ln:expr, $size:ty) => { Port::<$size>::($ln) }
-}
-
-/// A helper macro to access the memory manager.
-#[macro_use]
-#[macro_export]
-macro_rules! mm {
-    () => {
-        $crate::mm::MEMORY_MANAGER
-    };
-}
-
-#[cfg(feature = "standalone")]
-mod standalone;
-
-#[cfg(feature = "standalone")]
-pub use standalone::*;
