@@ -1,0 +1,13 @@
+[workspace]
+members = [
+    "kernel",
+    "arch",
+    "mem",
+    "macros",
+    # "sched",
+]
+
+
+[profile.dev]
+panic = "abort"
+lto = "thin"
