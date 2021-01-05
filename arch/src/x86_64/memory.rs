@@ -33,7 +33,7 @@ static mut PDPT_SPACE: AlignedHole<4096> = AlignedHole([0u8; 4096]);
 #[link_section = ".bss.pdt"]
 static mut PDT_SPACE: AlignedHole<4096> = AlignedHole([0u8; 4096]);
 
-const STACK_SIZE: usize = 0x4000; // 16KiB
+const STACK_SIZE: usize = 0x8000 * 4; // 32KiB
 
 /// Yes... this is the stack, no flash photography please.
 #[no_mangle]

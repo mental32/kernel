@@ -32,7 +32,7 @@ _start:
 extern KERNEL_STACK
 
     ; Setup the stack
-    mov esp, KERNEL_STACK + 0x4000 ; bottom of the stack + 16KiB
+    mov esp, KERNEL_STACK + (0x8000 * 4) ; bottom of the stack + 32KiB
 
     call _start.cpuid
     call _start.long_mode

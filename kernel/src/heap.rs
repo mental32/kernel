@@ -14,7 +14,7 @@ fn alloc_error_handler(layout: alloc::alloc::Layout) -> ! {
 #[global_allocator]
 static GLOBAL_ALLOCATOR: LockedHeapWithRescue = LockedHeapWithRescue::new(|heap| {
     static mut HEAP_BASE_PTR: usize = 0x6666_0000_0000;
-    const EXTENSION_AMOUNT: usize = 0x1000;
+    const EXTENSION_AMOUNT: usize = 0x4000;
 
     // SAFETY: It's not.
     unsafe {
