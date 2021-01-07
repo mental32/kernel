@@ -26,10 +26,10 @@ unsafe fn kmain() {
     let tables = ::acpi::AcpiTables::search_for_rsdp_bios(self::acpi::AcpiPassthrough)
         .expect("Missing ACPI RSDP...");
 
-    if let Some(dsdt) = &tables.dsdt {
-        log::info!("(ACPI) DSDT {:?}", dsdt);
+    for table in tables.ssdts.iter() {
+        log::info!("(ACPI) Parsing AML table {:?}", table);
 
-        let slice = core::slice::from_raw_parts(dsdt.address as *mut _, dsdt.length as usize);
+        let slice = core::slice::from_raw_parts(table.address as *mut _, table.length as usize);
 
         ::aml::AmlContext::new(
             Box::new(self::acpi::aml::AmlHandler),
@@ -37,9 +37,22 @@ unsafe fn kmain() {
             ::aml::DebugVerbosity::All,
         )
         .parse_table(slice)
-        .unwrap();
+        .expect("Failed to parse AML table.");
+    }
 
-        unreachable!()
+    #[cfg(false)]  // TODO(mental): Investigate why parsing the DSDT freezes everything...
+    if let Some(dsdt) = &tables.dsdt {
+        log::info!("(ACPI) Parsing DSDT {:?}", dsdt);
+
+        let slice = core::slice::from_raw_parts(dsdt.address as *mut _, dsdt.length as usize);
+
+        ::aml::AmlContext::new(
+            Box::new(self::acpi::aml::AmlHandler),
+            tables.revision == 0,
+            ::aml::DebugVerbosity::All,
+        )
+        .parse_table(slice)
+        .expect("Failed to parse DSDT");
     }
 
     let info = tables
