@@ -5,4 +5,3 @@ authors = ["mental <mentalfoss@yahoo.com>"]
 edition = "2018"
 
 [dependencies]
-sched-macros = { path = "sched_macros/" }

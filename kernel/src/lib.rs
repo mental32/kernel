@@ -32,7 +32,7 @@ unsafe fn kmain() {
         let slice = core::slice::from_raw_parts(table.address as *mut _, table.length as usize);
 
         ::aml::AmlContext::new(
-            Box::new(self::acpi::aml::AmlHandler),
+            Box::new(self::acpi::AmlHandler),
             true,
             ::aml::DebugVerbosity::All,
         )
@@ -40,20 +40,20 @@ unsafe fn kmain() {
         .expect("Failed to parse AML table.");
     }
 
-    #[cfg(false)]  // TODO(mental): Investigate why parsing the DSDT freezes everything...
-    if let Some(dsdt) = &tables.dsdt {
-        log::info!("(ACPI) Parsing DSDT {:?}", dsdt);
+    // // TODO(mental): Investigate why parsing the DSDT freezes everything...
+    // if let Some(dsdt) = &tables.dsdt {
+    //     log::info!("(ACPI) Parsing DSDT {:?}", dsdt);
 
-        let slice = core::slice::from_raw_parts(dsdt.address as *mut _, dsdt.length as usize);
+    //     let slice = core::slice::from_raw_parts(dsdt.address as *mut _, dsdt.length as usize);
 
-        ::aml::AmlContext::new(
-            Box::new(self::acpi::aml::AmlHandler),
-            tables.revision == 0,
-            ::aml::DebugVerbosity::All,
-        )
-        .parse_table(slice)
-        .expect("Failed to parse DSDT");
-    }
+    //     ::aml::AmlContext::new(
+    //         Box::new(self::acpi::AmlHandler),
+    //         tables.revision == 0,
+    //         ::aml::DebugVerbosity::All,
+    //     )
+    //     .parse_table(slice)
+    //     .expect("Failed to parse DSDT");
+    // }
 
     let info = tables
         .platform_info()

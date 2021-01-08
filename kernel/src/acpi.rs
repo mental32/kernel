@@ -1,3 +1,7 @@
+use core::{mem::size_of, ptr::NonNull};
+
+use acpi::PhysicalMapping;
+
 
 pub struct AmlHandler;
 
@@ -80,5 +84,34 @@ impl aml::Handler for AmlHandler {
 
     fn write_pci_u32(&self, segment: u16, bus: u8, device: u8, function: u8, offset: u16, value: u32) {
         todo!()
+    }
+}
+
+#[derive(Copy, Clone, Debug)]
+pub(crate) struct AcpiPassthrough;
+
+impl acpi::AcpiHandler for AcpiPassthrough {
+    unsafe fn map_physical_region<T>(
+        &self,
+        physical_address: usize,
+        size: usize,
+    ) -> acpi::PhysicalMapping<Self, T> {
+        log::trace!(
+            "(ACPI) Mapping physical_address {:?} ({:?} size)",
+            physical_address,
+            size
+        );
+
+        PhysicalMapping {
+            physical_start: physical_address,
+            virtual_start: NonNull::new(physical_address as *mut _).unwrap(),
+            region_length: size_of::<T>(),
+            mapped_length: (1024 * 1024) * 2,
+            handler: Self,
+        }
+    }
+
+    fn unmap_physical_region<T>(&self, region: &acpi::PhysicalMapping<Self, T>) {
+        log::trace!("(ACPI) Unapping region {:#x}", region.physical_start);
     }
 }

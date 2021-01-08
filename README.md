@@ -20,4 +20,4 @@ Appropriately named options are available:
 * `python x.py --iso`
 * `python x.py --qemu`
 
-Also a `--release` flag is available that can be added with any of the above.
+Also a `--release` flag is available that can be added with any of the above (note that I dont test release builds so stuff probably breaks there.)
