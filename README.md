@@ -12,7 +12,7 @@ The root workspace is divided into multiple crates:
 ## Building/Running
 
 A script is provided `/x.py` that is used to build the kernel, produce an ISO
-and, optionally, ivoke QEMU with the kernel ISO.
+and, optionally, invoke QEMU with the kernel ISO.
 
 Appropriately named options are available:
 
