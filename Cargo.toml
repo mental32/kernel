@@ -1,13 +1,5 @@
 [workspace]
-members = [
-    "kernel",
-    "arch",
-    "mem",
-    "macros",
-    # "sched",
-]
+members = ["kernel/", "kcore/", "iso9660/"]
 
-
-[profile.dev]
-panic = "abort"
-lto = "thin"
+[profile.release]
+debug = false

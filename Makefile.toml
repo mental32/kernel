@@ -1,0 +1,15 @@
+[env]
+CARGO_MAKE_EXTEND_WORKSPACE_MAKEFILE = true
+CARGO_MAKE_WORKSPACE_SKIP_MEMBERS = "bootloader/*"
+
+[tasks."set-build-target"]
+script = { file = "scripts/set-build-target.sh" }
+workspace = false
+
+[tasks."unset-build-target"]
+script = { file = "scripts/unset-build-target.sh" }
+workspace = false
+
+[tasks."build-image-amd64"]
+script = { file = "scripts/build-image-amd64.sh" }
+workspace = false

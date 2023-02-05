@@ -1,7 +1,0 @@
-[package]
-name = "scheduler"
-version = "0.0.0"
-authors = ["mental <mentalfoss@yahoo.com>"]
-edition = "2018"
-
-[dependencies]
